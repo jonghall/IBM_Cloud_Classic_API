@@ -3,19 +3,35 @@
 # # Place APIKEY & Username in config.ini or pass via commandline
 ##
 
-import sys, getopt, socket, SoftLayer, json, string, configparser, os
+import sys, getopt, socket, SoftLayer, json, string, configparser, os, argparse
 
 
 def initializeSoftLayerAPI(filename):
-    # # READ configuration file
-    if os.path.isfile(filename) is True:
+    ## READ CommandLine Arguments and load configuration file
+    parser = argparse.ArgumentParser(description="Configuration Report prints details of BareMetal Servers such as Network, VLAN, and hardware configuration")
+    parser.add_argument("-u", "--username", help="SoftLayer API Username")
+    parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
+    parser.add_argument("-c", "--config", help="config.ini file to load")
+
+    args = parser.parse_args()
+
+    if args.config != None:
+        filename=args.config
+    else:
+        filename="config.ini"
+
+    if (os.path.isfile(filename) is True) and (args.username == None or args.apikey==None):
+        ## Read APIKEY from configuration file
         config = configparser.ConfigParser()
         config.read(filename)
         client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'])
     else:
-        print("config.ini file missing.  Using command line arguments")
-        client = SoftLayer.Client(username=sys.argv[1], api_key=sys.argv[2])
-        quit()
+        ## Read APIKEY from commandline arguments
+        if args.username == None  or args.apikey==None:
+            print("No APIKEY information found in config.ini or by using command line arguments.")
+            quite()
+        else:
+            client = SoftLayer.Client(username=args.username, api_key=args.apikey)
     return client
 
 
