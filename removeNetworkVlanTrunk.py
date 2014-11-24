@@ -1,29 +1,51 @@
 #
 # Remove a Trunked VLAN from Server
 #
-import SoftLayer, sys, json, os, string, configparser
+import SoftLayer, os, random, string, json, sys, configparser, argparse
+from itertools import chain
 
 
-def initializeSoftLayerAPI(filename):
-    # # READ configuration file
-    if os.path.isfile(filename) is True:
+def initializeSoftLayerAPI():
+    ## READ CommandLine Arguments and load configuration file
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-u", "--username", help="SoftLayer API Username")
+    parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
+    parser.add_argument("-c", "--config", help="config.ini file to load")
+
+    args = parser.parse_args()
+
+    if args.config != None:
+        filename=args.config
+    else:
+        filename="config.ini"
+
+    if (os.path.isfile(filename) is True) and (args.username == None and args.apikey == None):
+        ## Read APIKEY from configuration file
         config = configparser.ConfigParser()
         config.read(filename)
         client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'])
     else:
-        print("config.ini file missing.  Using command line arguments")
-        client = SoftLayer.Client(username=sys.argv[1], api_key=sys.argv[2])
-        quit()
+        ## Read APIKEY from commandline arguments
+        if args.username == None and args.apikey == None:
+            print ("You must specify a username and APIkey to use.")
+            quit()
+        if args.username == None:
+            print ("You must specify a username with your APIKEY.")
+            quit()
+        if args.apikey == None:
+            print("You must specify a APIKEY with the username.")
+            quit()
+        client = SoftLayer.Client(username=args.username, api_key=args.apikey)
     return client
 
 #
 # Get APIKEY from config.ini & initialize SoftLayer API
 #
 
-client = initializeSoftLayerAPI("config.ini")
+client = initializeSoftLayerAPI()
 
 # Lookup Hostname
-fullyQualifiedDomainName = input("fully qualified Domain name: ")
+fullyQualifiedDomainName = input("Fully qualified Domain name to remove VLAN trunk from: ")
 hardwarelist = client['Account'].getHardware()
 
 for hardware in hardwarelist:
