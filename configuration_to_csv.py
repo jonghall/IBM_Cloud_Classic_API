@@ -2,11 +2,26 @@
 ## write configuration data to CSV files
 ##
 
-import SoftLayer, socket
-from pprint import pprint as pp
-import sys, json, string, csv, sys, codecs
+import SoftLayer, socket, os, sys, json, string, csv, sys, codecs, configparser
 
-client = SoftLayer.Client(username=sys.argv[1], api_key=sys.argv[2])
+
+def initializeSoftLayerAPI(filename):
+    # # READ configuration file
+    if os.path.isfile(filename) is True:
+        config = configparser.ConfigParser()
+        config.read(filename)
+        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'])
+    else:
+        print("config.ini file missing.  Using command line arguments")
+        client = SoftLayer.Client(username=sys.argv[1], api_key=sys.argv[2])
+        quit()
+    return client
+
+#
+# Get APIKEY from config.ini & initialize SoftLayer API
+#
+
+client = initializeSoftLayerAPI("config.ini")
 
 ## PROMPT FOR Files to use
 outputname = input("Filename to output: ")
