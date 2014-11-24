@@ -1,6 +1,6 @@
 ##
 ## Account Bare Metal Configuration Report
-
+## Pass username & apikey to script
 
 import sys,getopt,socket,SoftLayer,json,string
 
