@@ -4,7 +4,6 @@
 
 import SoftLayer, socket, os, sys, json, string, csv, sys, codecs, configparser
 
-
 def initializeSoftLayerAPI(filename):
     # # READ configuration file
     if os.path.isfile(filename) is True:
