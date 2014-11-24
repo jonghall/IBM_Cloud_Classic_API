@@ -30,14 +30,14 @@ Download scripts into directory.
 There are two methods to configure the USERNAME and API key to use with these scripts.
 
 
-1.  Download config.ini template and configure this ini file with your username and API key.  If you have not already generated a SoftLayer APIKEY log into http://control.softlayer.com, select Account - Users, click on Generate, then click View to view the API Key.  This value along with your username should be included in the config.ini file.  By default the script will read the config.ini file in the same directory as the script.   You can specify and alternate file or location with the -c argument.
+Download config.ini template and configure this ini file with your username and API key.  If you have not already generated a SoftLayer APIKEY log into http://control.softlayer.com, select Account - Users, click on Generate, then click View to view the API Key.  This value along with your username should be included in the config.ini file.  By default the script will read the config.ini file in the same directory as the script.   You can specify and alternate file or location with the -c argument.
 ```
 [api]
 username=  <== SoftLayer Username goes here.
 apikey=   <== Softlayer APIKEY goes here.
 ```
 
-2.  Pass your username and APIKEY via command line argument
+Pass your username and APIKEY via command line argument
 ```
 usage: script.py [-h] [-u USERNAME] [-k APIKEY] [-c CONFIG]
 
