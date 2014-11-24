@@ -1,12 +1,13 @@
-# #
+##
 ## Account Bare Metal Configuration Report
-# # Place APIKEY & Username in config.ini or pass via commandline
+## Place APIKEY & Username in config.ini
+## or pass via commandline  (example: ConfigurationReport.py -u=userid -k=apikey)
 ##
 
 import sys, getopt, socket, SoftLayer, json, string, configparser, os, argparse
 
 
-def initializeSoftLayerAPI(filename):
+def initializeSoftLayerAPI():
     ## READ CommandLine Arguments and load configuration file
     parser = argparse.ArgumentParser(description="Configuration Report prints details of BareMetal Servers such as Network, VLAN, and hardware configuration")
     parser.add_argument("-u", "--username", help="SoftLayer API Username")
@@ -20,18 +21,23 @@ def initializeSoftLayerAPI(filename):
     else:
         filename="config.ini"
 
-    if (os.path.isfile(filename) is True) and (args.username == None or args.apikey==None):
+    if (os.path.isfile(filename) is True) and (args.username == None and args.apikey == None):
         ## Read APIKEY from configuration file
         config = configparser.ConfigParser()
         config.read(filename)
         client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'])
     else:
         ## Read APIKEY from commandline arguments
-        if args.username == None  or args.apikey==None:
-            print("No APIKEY information found in config.ini or by using command line arguments.")
-            quite()
-        else:
-            client = SoftLayer.Client(username=args.username, api_key=args.apikey)
+        if args.username == None and args.apikey == None:
+            print ("You must specify a username and APIkey to use.")
+            quit()
+        if args.username == None:
+            print ("You must specify a username with your APIKEY.")
+            quit()
+        if args.apikey == None:
+            print("You must specify a APIKEY with the username.")
+            quit()
+        client = SoftLayer.Client(username=args.username, api_key=args.apikey)
     return client
 
 
@@ -72,7 +78,7 @@ class TablePrinter(object):
 # Get APIKEY from config.ini & initialize SoftLayer API
 #
 
-client = initializeSoftLayerAPI("config.ini")
+client = initializeSoftLayerAPI()
 
 #
 # BUILD TABLES
