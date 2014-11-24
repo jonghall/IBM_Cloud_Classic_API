@@ -30,9 +30,9 @@ Download scripts into directory.
 
 Download config.ini template and configure with your API key.  If user has not already generated a SoftLayer APIKEY log into http://control.softlayer.com, select Account - Users, click on Generate, then click View to viwe the APIKey.
 
-```python
+```
 [api]
 username=  <== SoftLayer Username goes here.
-apikey= <** Softlayer APIKEY found in control (Account - Users)
+apikey=   <== Softlayer APIKEY goes here.
 ```
 
