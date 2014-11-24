@@ -1,17 +1,28 @@
 ##
 ## Account Bare Metal Configuration Report
-## Pass username & apikey to script
+# # Place APIKEY & Username in config.ini or pass via commandline
+##
 
-import sys,getopt,socket,SoftLayer,json,string
-
-
-client = SoftLayer.Client(username= sys.argv[1], api_key = sys.argv[2])
+import sys, getopt, socket, SoftLayer, json, string, configparser, os
 
 
-#
-# FORMAT TABLE                
-#
+def initializeSoftLayerAPI(filename):
+    # # READ configuration file
+    if os.path.isfile(filename) is True:
+        config = configparser.ConfigParser()
+        config.read(filename)
+        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'])
+    else:
+        print("config.ini file missing.  Using command line arguments")
+        client = SoftLayer.Client(username=sys.argv[1], api_key=sys.argv[2])
+        quit()
+    return client
+
+
 class TablePrinter(object):
+    #
+    # FORMAT TABLE
+    #
     "Print a list of dicts as a table"
     def __init__(self, fmt, sep=' ', ul=None):
         """        
@@ -38,6 +49,13 @@ class TablePrinter(object):
         if self.ul:
             res.insert(1, _r(self.ul))
         return '\n'.join(res)
+
+
+#
+# Get APIKEY from config.ini & initialize SoftLayer API
+#
+
+client = initializeSoftLayerAPI("config.ini")
 
 #
 # BUILD TABLES
@@ -67,7 +85,6 @@ trunkFormat = [
         ('VlanNumber',    'vlanNumber',             10),
         ('VlanName',      'vlanName',               20)
     ]
-
 
 
 #

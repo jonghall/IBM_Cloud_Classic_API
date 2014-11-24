@@ -1,17 +1,28 @@
 __author__ = 'jonhall'
 ##
 ## Provision Servers from Stored Quote
-## pass username and apikey into script
 ##
+# #
 
-
-import SoftLayer
-import os, random, string, sys, json
-import string
+import SoftLayer, random, string, sys, json, os, configparser
 from itertools import chain
 
-### Get Quotes fro mAccount
+
+def initializeSoftLayerAPI(filename):
+    # # READ configuration file
+    if os.path.isfile(filename) is True:
+        config = configparser.ConfigParser()
+        config.read(filename)
+        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'])
+    else:
+        print("config.ini file missing.  Using command line arguments")
+        client = SoftLayer.Client(username=sys.argv[1], api_key=sys.argv[2])
+        quit()
+    return client
+
+
 def getQuote():
+    ## Get Quotes from Account
     quotes = client['Account'].getQuotes()
     count=0
     for quote in quotes:
@@ -25,7 +36,6 @@ def getQuote():
     quoteid = quote['id']
     return quoteid
 
-### Get valid BCR's in Datacenter
 def getBCR(datacenter):
     # Display avaialble VLANs in Datacenter
     bcrs = client['Location_Datacenter'].getBackendHardwareRouters(id=datacenter)
@@ -40,7 +50,6 @@ def getBCR(datacenter):
     bcrid = bcrs[x-1]['id']
     return bcrid
 
-### Get list of VLANs for BCR
 def getVlan(bcrid):
     # Display available VLANs in Datacenter
     vlans = client['Account'].getPrivateNetworkVlans(mask="primaryRouter")
@@ -63,7 +72,6 @@ def getVlan(bcrid):
     vlanid = table[x-1]['vlanid']
     return vlanid
 
-### Collect list of hostnames and assign to VLAN for Order
 def getHostNames(quantity,vlanid):
     # Build list of host/domain dictionaries
     servernames=[]
@@ -84,8 +92,11 @@ def getHostNames(quantity,vlanid):
         servernames.append(servername)
     return servernames
 
-# Get username and APIKey from sys.argv
-client = SoftLayer.Client(username=sys.argv[1], api_key=sys.argv[2])
+#
+# Get APIKEY from config.ini & initialize SoftLayer API
+#
+
+client = initializeSoftLayerAPI("config.ini")
 
 # Get the quote ID to work with
 quoteid = getQuote()
