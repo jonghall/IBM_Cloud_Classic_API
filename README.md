@@ -27,12 +27,26 @@ The most up to date version of this library can be found on the SoftLayer GitHub
 Download scripts into directory.
 
 **Configuration of Jon-SL-scripts**
+There are two methods to configure the USERNAME and API key for use with the scripts.
 
-Download config.ini template and configure with your API key.  If user has not already generated a SoftLayer APIKEY log into http://control.softlayer.com, select Account - Users, click on Generate, then click View to viwe the APIKey.
+1.  Download config.ini template and configure with your API key.  If user has not already generated a SoftLayer APIKEY log into http://control.softlayer.com, select Account - Users, click on Generate, then click View to viwe the APIKey.
 
 ```
 [api]
 username=  <== SoftLayer Username goes here.
 apikey=   <== Softlayer APIKEY goes here.
 ```
+2.  Pass your username and APIKEY via commanline
 
+```
+usage: script.py [-h] [-u USERNAME] [-k APIKEY] [-c CONFIG]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -u USERNAME, --username USERNAME
+                        SoftLayer API Username
+  -k APIKEY, --apikey APIKEY
+                        SoftLayer APIKEY
+  -c CONFIG, --config CONFIG
+                        config.ini file to load
+```
