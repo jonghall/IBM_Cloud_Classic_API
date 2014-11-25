@@ -10,7 +10,7 @@ from itertools import chain
 
 def initializeSoftLayerAPI():
     ## READ CommandLine Arguments and load configuration file
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="This script is used to trunk existing VLANs to a host.   This is often used to associate VLANs to a hypervisor host.")
     parser.add_argument("-u", "--username", help="SoftLayer API Username")
     parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
     parser.add_argument("-c", "--config", help="config.ini file to load")

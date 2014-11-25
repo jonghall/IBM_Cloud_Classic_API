@@ -10,7 +10,7 @@ from itertools import chain
 
 def initializeSoftLayerAPI():
     ## READ CommandLine Arguments and load configuration file
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="The script is used to place an order using a saved quote.")
     parser.add_argument("-u", "--username", help="SoftLayer API Username")
     parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
     parser.add_argument("-c", "--config", help="config.ini file to load")
