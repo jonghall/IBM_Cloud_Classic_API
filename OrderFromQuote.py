@@ -139,13 +139,13 @@ servers = getHostNames(quantity,vlanid)
 container['presetId'] = None
 container['hardware'] = servers
 
-print (json.dumps(container, indent=4))
+#print (json.dumps(container, indent=4))
 
 verify = client['Billing_Order_Quote'].verifyOrder(container, id=quoteid)
 
 print (json.dumps(verify, indent=4))
 
-provision=input ("Submit order for provisioning [Y/B]? ")
+provision=input ("Submit order for provisioning [Y/N]? ")
 
 if provision=="Y":
     order = client['Billing_Order_Quote'].placeOrder(verify, id=quoteid)
