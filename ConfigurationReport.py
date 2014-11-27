@@ -108,6 +108,13 @@ trunkFormat = [
     ('VlanName', 'vlanName', 20)
 ]
 
+storageFormat = [
+    ('StorageType', 'type', 11),
+    ('Address', 'address', 40),
+    ('Gb', 'capacity', 10),
+    ('IOPS', 'iops', 10),
+    ('Notes', 'notes', 20)
+]
 
 #
 # GET LIST OF ALL DEDICATED HARDWARE IN ACCOUNT
@@ -243,15 +250,29 @@ for hardware in hardwarelist:
     network['router'] = hardware['backendRouters'][0]['fullyQualifiedDomainName']
     data.append(network)
     print(TablePrinter(networkFormat, ul='=')(data))
-
     print()
 
-    result = client['Hardware'].getComponents(id=hardwareid)
-
+    #
+    # GET NETWORK STORAGE
+    #
+    storagealloc = client['Hardware'].getAllowedNetworkStorage(mask="iops",id=hardwareid)
+    data = []
+    for storage in storagealloc:
+        storagerow = {}
+        storagerow['type'] = storage['nasType']
+        storagerow['address'] = storage['serviceResourceBackendIpAddress']
+        storagerow['capacity'] = storage['capacityGb']
+        storagerow['iops'] = storage['iops']
+        if 'notes' in storage.keys(): storagerow['notes'] = storage['notes']
+        data.append(storagerow)
+    print("NETWORK STORAGE AUTHORIZED")
+    print(TablePrinter(storageFormat, ul='=')(data))
+    print("")
 
     #
     # POPULATE TABLE WITH COMPONENT DATA
     #
+    result = client['Hardware'].getComponents(id=hardwareid)
     data = []
     for device in result:
         hwdevice = {}
@@ -263,12 +284,8 @@ for hardware in hardwarelist:
         hwdevice['modifydate'] = device['modifyDate']
         if 'serialNumber' in device.keys(): hwdevice['serialnumber'] = device['serialNumber']
         data.append(hwdevice)
-
-    #
-    # PRINT DATA TABLE
-    #
-
     print(TablePrinter(serverFormat, ul='=')(data))
+
     print(
         "__________________________________________________________________________________________________________________")
     print()

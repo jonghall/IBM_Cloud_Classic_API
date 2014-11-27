@@ -18,7 +18,7 @@ def initializeSoftLayerAPI():
     args = parser.parse_args()
 
     if args.config != None:
-        filename=args.config
+        filename=args.configresou
     else:
         filename="config.ini"
 
@@ -91,7 +91,7 @@ try:
     for vlan in vlans:
         if vlan['primaryRouter']['fullyQualifiedDomainName'] == backendRouter: print("%s" % (vlan['vlanNumber']))
 
-    vlanNumber = int(input("VLAN to add to device: "))
+    vlanNumber = input("VLAN to add to device: ")
 
     print("Adding vlan %s trunk for device %s." % (vlanNumber, fullyQualifiedDomainName))
 
