@@ -8,6 +8,8 @@ OrderFromQuote.py | Order bare metal servers from saved quote.  Assign hostname,
 addNetworkVlanTrunk.py | Add existing VLAN to server's list of trunked vlans to enable VLAN tagging on switch port
 removeNetworkVlanTrunk.py | Remove VLAN from server's list of trunked vlans to remove VLAN tagging on switch port
 configuration_to_csv.py | Write configuration report to CSV file for import into Excel
+DeprovisionCCI.py | Lists each CCI in account and asks if you would like to Deprovision
+DeprovisionBM.py | Lists Hourly and Monthly Bare Metal Servers and asks if you would like to Deprovision
 
 **Installation of SL API**
 
