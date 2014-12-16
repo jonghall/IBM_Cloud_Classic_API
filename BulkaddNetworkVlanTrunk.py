@@ -48,16 +48,16 @@ def initializeSoftLayerAPI():
 client = initializeSoftLayerAPI()
 
 # ADD LISTS OF Hosts to add VLAN TRUNKS TO
-hosts = ["resourcehost01.par01.bourso.net",
-         "resourcehost02.par01.bourso.net",
-         "resourcehost03.par01.bourso.net",
-         "resourcehost04.par01.bourso.net",
-         "resourcehost05.par01.bourso.net",
-         "resourcehost06.par01.bourso.net",
-         "resourcehost07.par01.bourso.net",
-         "resourcehost08.par01.bourso.net",
-         "resourcehost09.par01.bourso.net",
-         "resourcehost10.par01.bourso.net"]
+hosts = ["host01.mydomain.net",
+         "host02.mydomain.net"",
+         "host03.pmydomain.net"",
+         "host04.mydomain.net"",
+         "host05.mydomain.net"",
+         "host06.mydomain.net"",
+         "host07.mydomain.net"",
+         "host08.mydomain.net"",
+         "host09.mydomain.net"",
+         "host10.mydomain.net""]
 
 
 # Add Bulk List of VLAN numbers to add to above hosts
