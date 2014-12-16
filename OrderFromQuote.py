@@ -139,9 +139,9 @@ servers = getHostNames(quantity,vlanid)
 container['presetId'] = None
 container['hardware'] = servers
 
-#print (json.dumps(container, indent=4))
+print (json.dumps(container, indent=4))
 
-verify = client['Billing_Order_Quote'].verifyOrder(container, id=quoteid)
+verify = client['Billing_Order_Quote'].verifyOrder(container)
 
 print (json.dumps(verify, indent=4))
 
