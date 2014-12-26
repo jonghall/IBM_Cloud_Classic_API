@@ -37,7 +37,7 @@ def initializeSoftLayerAPI():
         if args.apikey == None:
             print("You must specify a APIKEY with the username.")
             quit()
-        client = SoftLayer.Client(username=args.username, api_key=args.apikey)
+        client = SoftLayer.Client(username=args.username, api_key=args.apikey, endpoint_url='https://api.service.softlayer.com/xmlrpc/v3.1/')
     return client
 
 
@@ -84,13 +84,17 @@ client = initializeSoftLayerAPI()
 # BUILD TABLES
 #
 networkFormat = [
+    ('Interface', 'interface', 10),
     ('MAC ', 'mac', 17),
     ('IpAddress', 'primaryIpAddress', 16),
     ('speed', 'speed', 5),
     ('status', 'status', 10),
     ('Vlan', 'vlan', 5),
     ('Vlan Name', 'vlanName', 20),
-    ('Router', 'router', 30),
+    ('Switch', 'switch',17),
+    ('Router', 'router', 17),
+    ('Manufacturer', 'router_mfg',12),
+    ('RouterIP','router_ip',16)
 ]
 
 serverFormat = [
@@ -103,8 +107,8 @@ serverFormat = [
 ]
 
 trunkFormat = [
-    ('VlanID', 'vlanid', 8),
-    ('VlanNumber', 'vlanNumber', 10),
+    ('Interface', 'interface', 10),
+    ('Vlan #', 'vlanNumber', 8),
     ('VlanName', 'vlanName', 20)
 ]
 
@@ -138,39 +142,31 @@ for hardware in hardwarelist:
     hardware = client['Hardware'].getObject(mask=mask_object, id=hardwareid)
 
     # FIND Index for MGMT Interface and get it's ComponentID Number
-    index = 0
-    mgmtindex = 0
+    mgmtnetworkcomponent=[]
     for backend in hardware['backendNetworkComponents']:
         if backend['name'] == "mgmt":
-            mgmtindex = index
-            mgmtcomponentid = backend['id']
+            mgmtnetworkcomponent=client['Network_Component'].getObject(mask="router, uplinkComponent",id=backend['id'])
             continue
-        index = index + 1
 
-    # FIND Private Index & COmponentID Number
-    index = 0
-    privateindex = 0
+    # OBTAIN INFORMATION ABOUT PRIVATE (BACKEND) INTERFACES
+    backendnetworkcomponents=[]
     for backend in hardware['backendNetworkComponents']:
-        if backend['name'] == "eth" and 'primaryIpAddress' in backend.keys():
-            privateindex = index
-            privatenetworkcomponentid = backend['id']
-            continue
-        index = index + 1
+        if backend['name'] == "eth":
+            backendnetworkcomponent=client['Network_Component'].getObject(mask="router, uplinkComponent",id=backend['id'])
+            # Get trunked vlans
+            backendnetworkcomponent['trunkedvlans'] = client['Network_Component'].getNetworkVlanTrunks(mask='networkVlan', id=backendnetworkcomponent['uplinkComponent']['id'])
+            backendnetworkcomponents.append(backendnetworkcomponent)
 
-    # FIND Public Index & COmponentID Number
-    index = 0
-    publicindex = 0
+    # FIND INFORMATION ABOUT PUBLIC (FRONTEND) INTERFACES
+    frontendnetworkcomponents=[]
     for frontend in hardware['frontendNetworkComponents']:
-        if frontend['name'] == "eth" and 'primaryIpAddress' in frontend.keys():
-            publicindex = index
-            publiccomponentid = frontend['id']
-            continue
-        index = index + 1
+        if frontend['name'] == "eth":
+            frontendnetworkcomponent=client['Network_Component'].getObject(mask="router, uplinkComponent",id=frontend['id'])
+            # Get trunked vlans
+            frontendnetworkcomponent['trunkedvlans'] = client['Network_Component'].getNetworkVlanTrunks(mask='networkVlan', id=frontendnetworkcomponent['uplinkComponent']['id'])
+            frontendnetworkcomponents.append(frontendnetworkcomponent)
 
 
-    # Get VLAN Trunks for network_compondent ID
-    network = client['Network_Component'].getObject(mask='uplinkComponent', id=privatenetworkcomponentid)
-    trunks = client['Network_Component'].getNetworkVlanTrunks(mask='networkVlan', id=network['uplinkComponent']['id'])
 
     print(
         "__________________________________________________________________________________________________________________")
@@ -190,49 +186,59 @@ for hardware in hardwarelist:
     print("FRONTEND NETWORK")
     data = []
     network = {}
-    network['mac'] = hardware['frontendNetworkComponents'][publicindex]['macAddress']
-    if 'primaryIpAddress' in hardware['frontendNetworkComponents'][publicindex].keys(): network['primaryIpAddress'] = \
-    hardware['frontendNetworkComponents'][publicindex]['primaryIpAddress']
-    network['speed'] = hardware['frontendNetworkComponents'][publicindex]['speed']
-    network['status'] = hardware['frontendNetworkComponents'][publicindex]['status']
-    network['router'] = hardware['frontendRouters'][publicindex]['fullyQualifiedDomainName']
-    if len(hardware['networkVlans']) > 1:
-        network['vlan'] = hardware['networkVlans'][1]['vlanNumber']
-        if 'name' in hardware['networkVlans'][1].keys(): network['vlanName'] = hardware['networkVlans'][0]['name']
-    data.append(network)
+    for frontendnetworkcomponent in frontendnetworkcomponents:
+        network={}
+        network['interface'] = "%s%s" % (frontendnetworkcomponent['name'], frontendnetworkcomponent['port'])
+        network['mac'] = frontendnetworkcomponent['macAddress']
+        if 'primaryIpAddress' in frontendnetworkcomponent:
+            network['primaryIpAddress'] = frontendnetworkcomponent['primaryIpAddress']
+        network['speed'] = frontendnetworkcomponent['speed']
+        network['status'] = frontendnetworkcomponent['status']
+        network['switch'] = frontendnetworkcomponent['uplinkComponent']['hardware']['hostname']
+        network['router'] = frontendnetworkcomponent['router']['hostname']
+        network['router_mfg'] = frontendnetworkcomponent['router']['hardwareChassis']['manufacturer']
+        network['router_ip'] = frontendnetworkcomponent['router']['primaryIpAddress']
+        if len(hardware['networkVlans']) > 1:
+            network['vlan'] = hardware['networkVlans'][1]['vlanNumber']
+            if 'name' in hardware['networkVlans'][1].keys(): network['vlanName'] = hardware['networkVlans'][0]['name']
+        data.append(network)
     print(TablePrinter(networkFormat, ul='=')(data))
 
     #
     # POPULATE TABLE WITH BACKEND DATA
     #
-    print()
-    print("BACKEND NETWORK")
-    data = []
-    network = {}
-    network['mac'] = hardware['backendNetworkComponents'][privateindex]['macAddress']
-    network['primaryIpAddress'] = hardware['backendNetworkComponents'][privateindex]['primaryIpAddress']
-    network['speed'] = hardware['backendNetworkComponents'][privateindex]['speed']
-    network['status'] = hardware['backendNetworkComponents'][privateindex]['status']
-    network['vlan'] = hardware['networkVlans'][0]['vlanNumber']
-    if 'name' in hardware['networkVlans'][0].keys(): network['vlanName'] = hardware['networkVlans'][0]['name']
-    network['router'] = hardware['backendRouters'][0]['fullyQualifiedDomainName']
-    data.append(network)
-    print(TablePrinter(networkFormat, ul='=')(data))
 
-    #
-    # PRINT TRUNKED VLANS
-    #
+    #print (json.dumps(backendnetworkcomponents,indent=4))
+    interfacedata = []
+    trunkdata= []
+    for backendnetworkcomponent in backendnetworkcomponents:
+        network={}
+        network['interface'] = "%s%s" % (backendnetworkcomponent['name'], backendnetworkcomponent['port'])
+        network['mac'] = backendnetworkcomponent['macAddress']
+        if 'primaryIpAddress' in backendnetworkcomponent:
+                network['primaryIpAddress'] = backendnetworkcomponent['primaryIpAddress']
+        network['speed'] = backendnetworkcomponent['speed']
+        network['status'] = backendnetworkcomponent['status']
+        network['vlan'] = hardware['networkVlans'][0]['vlanNumber']
+        if 'name' in hardware['networkVlans'][0].keys(): network['vlanName'] = hardware['networkVlans'][0]['name']
+        network['switch'] = backendnetworkcomponent['uplinkComponent']['hardware']['hostname']
+        network['router'] = backendnetworkcomponent['router']['hostname']
+        network['router_mfg'] =backendnetworkcomponent['router']['hardwareChassis']['manufacturer']
+        network['router_ip'] = backendnetworkcomponent['router']['primaryIpAddress']
+        interfacedata.append(network)
+        for trunk in backendnetworkcomponent['trunkedvlans']:
+            trunkedvlan = {}
+            trunkedvlan['interface'] = network['interface']
+            trunkedvlan['vlanNumber'] = trunk['networkVlan']['vlanNumber']
+            if 'name' in trunk['networkVlan'].keys(): trunkedvlan['vlanName'] = trunk['networkVlan']['name']
+            trunkdata.append(trunkedvlan)
 
     print()
-    print("TRUNKED/TAGGED VLANS")
-    data = []
-    for trunk in trunks:
-        trunkedvlan = {}
-        trunkedvlan['vlanid'] = trunk['networkVlan']['id']
-        trunkedvlan['vlanNumber'] = trunk['networkVlan']['vlanNumber']
-        if 'name' in trunk['networkVlan'].keys(): trunkedvlan['vlanName'] = trunk['networkVlan']['name']
-        data.append(trunkedvlan)
-    print(TablePrinter(trunkFormat, ul='=')(data))
+    print("BACKEND NETWORK INTERFACE(S)")
+    print(TablePrinter(networkFormat, ul='=')(interfacedata))
+    print()
+    print("TAGGED VLANS BY INTERFACE")
+    print(TablePrinter(trunkFormat, ul='=')(trunkdata))
 
     #
     # POPULATE TABLE WITH MGMT DATA
@@ -241,13 +247,17 @@ for hardware in hardwarelist:
     print("MGMT NETWORK")
     data = []
     network = {}
-    network['mac'] = hardware['backendNetworkComponents'][mgmtindex]['ipmiMacAddress']
-    network['primaryIpAddress'] = hardware['networkManagementIpAddress']
-    network['speed'] = hardware['backendNetworkComponents'][mgmtindex]['speed']
-    network['status'] = hardware['backendNetworkComponents'][mgmtindex]['status']
+
+    network['mac'] = mgmtnetworkcomponent['ipmiMacAddress']
+    network['primaryIpAddress'] = mgmtnetworkcomponent['ipmiIpAddress']
+    network['speed'] = mgmtnetworkcomponent['speed']
+    network['status'] = mgmtnetworkcomponent['status']
     network['vlan'] = hardware['networkVlans'][0]['vlanNumber']
     if 'name' in hardware['networkVlans'][0].keys(): network['vlanName'] = hardware['networkVlans'][0]['name']
-    network['router'] = hardware['backendRouters'][0]['fullyQualifiedDomainName']
+    network['switch'] = mgmtnetworkcomponent['uplinkComponent']['hardware']['hostname']
+    network['router'] = mgmtnetworkcomponent['router']['hostname']
+    network['router_mfg'] =mgmtnetworkcomponent['router']['hardwareChassis']['manufacturer']
+    network['router_ip'] = mgmtnetworkcomponent['router']['primaryIpAddress']
     data.append(network)
     print(TablePrinter(networkFormat, ul='=')(data))
     print()
