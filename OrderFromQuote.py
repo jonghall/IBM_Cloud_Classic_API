@@ -123,7 +123,7 @@ client = initializeSoftLayerAPI()
 quoteid = getQuote()
 
 # Get Quote Order Container for QuoteID
-order = client['Billing_Order_Quote'].getREcalculatedOrderContainer(id=quoteid)
+order = client['Billing_Order_Quote'].getRecalculatedOrderContainer(id=quoteid)
 container = order['orderContainers'][0]
 
 # Get VLAN for Quote datacenter & selected BCR
@@ -139,11 +139,7 @@ servers = getHostNames(quantity,vlanid)
 container['presetId'] = None
 container['hardware'] = servers
 
-print (json.dumps(container, indent=4))
-
-verify = client['Billing_Order_Quote'].verifyOrder(container)
-
-print (json.dumps(verify, indent=4))
+verify = client['Billing_Order_Quote'].verifyOrder(container, id=quoteid)
 
 provision=input ("Submit order for provisioning [Y/N]? ")
 
