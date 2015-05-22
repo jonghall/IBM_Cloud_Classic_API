@@ -270,7 +270,8 @@ for hardware in hardwarelist:
     for storage in storagealloc:
         storagerow = {}
         storagerow['type'] = storage['nasType']
-        storagerow['address'] = storage['serviceResourceBackendIpAddress']
+        if 'serviceResourceBackendIpAddress' in storage.keys():
+            storagerow['address'] = storage['serviceResourceBackendIpAddress']
         storagerow['capacity'] = storage['capacityGb']
         storagerow['iops'] = storage['iops']
         if 'notes' in storage.keys(): storagerow['notes'] = storage['notes']
