@@ -11,7 +11,7 @@ import sys, getopt, socket, SoftLayer, json, string, configparser, os, argparse
 
 def initializeSoftLayerAPI():
     ## READ CommandLine Arguments and load configuration file
-    parser = argparse.ArgumentParser(description="Print a report of Recurring invoices between Start and End date.")
+    parser = argparse.ArgumentParser(description="Print a report of Recurring invoices sorted by Hourly vs Monthly between Start and End date.")
     parser.add_argument("-u", "--username", help="SoftLayer API Username")
     parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
     parser.add_argument("-c", "--config", help="config.ini file to load")
