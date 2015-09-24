@@ -62,6 +62,9 @@ enddate=input("Report End Date (MM/DD/YYYY): ")
 print()
 print("Looking up invoices....")
 
+topLevelCategories = client['Product_Item_Category'].getTopLevelCategories()
+
+# Build Filter for Invoices
 InvoiceList = client['Account'].getInvoices(filter={
         'invoices': {
             'createDate': {
@@ -77,21 +80,21 @@ InvoiceList = client['Account'].getInvoices(filter={
 
 
 print ()
-print ('{:<25} {:<40} {:>8} {:>16} {:>16} {:>16} {:<15}'.format("Invoice Date /", "Invoice Number /", "Hours", "Hourly Rate", "Recurring Charge",  "Invoice Amount", "Type"))
-print ('{:<25} {:<40} {:>8} {:>16} {:>16} {:>16} {:<15}'.format("Top Level Type", "Hostname        ", "     ", "           ", "                ",  "              ", "    "))
-print ('{:<25} {:<40} {:>8} {:>16} {:>16} {:>16} {:<15}'.format("==============", "================", "=====", "===========", "================",  "==============", "===="))
+print ('{:<35} {:<30} {:>8} {:>16} {:>16} {:>16} {:<15}'.format("Invoice Date /", "Invoice Number /", "Hours", "Hourly Rate", "Recurring Charge",  "Invoice Amount", "Type"))
+print ('{:<35} {:<30} {:>8} {:>16} {:>16} {:>16} {:<15}'.format("Hostname      ", "Description     ", "     ", "           ", "                ",  "              ", "    "))
+print ('{:<35} {:<30} {:>8} {:>16} {:>16} {:>16} {:<15}'.format("==============", "================", "=====", "===========", "================",  "==============", "===="))
 for invoice in InvoiceList:
     if invoice['typeCode'] == "RECURRING":
         invoiceID = invoice['id']
         Billing_Invoice = client['Billing_Invoice'].getObject(id=invoiceID, mask="invoiceTopLevelItemCount,invoiceTopLevelItems,invoiceTotalAmount, invoiceTotalOneTimeAmount, invoiceTotalRecurringAmount")
         if Billing_Invoice['invoiceTotalAmount'] > "0":
             # PRINT INVOICE SUMMARY LINE
-            print ('{:25} {:<40} {:>8} {:>16} {:>16,.2f} {:>16,.2f} {:<15}'.format(Billing_Invoice['createDate'][0:10], Billing_Invoice['id'], " ", " ", float(Billing_Invoice['invoiceTotalAmount']), float(Billing_Invoice['invoiceTotalRecurringAmount']), Billing_Invoice['typeCode']))
+            print ('{:35} {:<30} {:>8} {:>16} {:>16,.2f} {:>16,.2f} {:<15}'.format(Billing_Invoice['createDate'][0:10], Billing_Invoice['id'], " ", " ", float(Billing_Invoice['invoiceTotalAmount']), float(Billing_Invoice['invoiceTotalRecurringAmount']), Billing_Invoice['typeCode']))
 
             print ()
-            print ("** HOURLY ITEMS BILLED IN ARREARS")
+            print ("** HOURLY ACTUALS BILLED IN ARREARS")
             print ()
-            # ITERATE THROUGH DETAIL SELCTING HOURLY ITEMS
+            # ITERATE THROUGH DETAIL SELECTING HOURLY ITEMS
             for item in Billing_Invoice['invoiceTopLevelItems']:
                 associated_children = client['Billing_Invoice_Item'].getAssociatedChildren(id=item['id'])
 
@@ -113,19 +116,24 @@ for invoice in InvoiceList:
                     else:
                         hostName = "Unnamed Device"
 
+                    #Lookup CategoryCode Description
                     category = item["categoryCode"]
+                    for topLevel in topLevelCategories:
+                        if topLevel['categoryCode'] == category:
+                            category = topLevel['name']
+                            quit
                     # PRINT LINE ITEM DETAIL FOR TOP LEVEL ITEM
-                    print ('{:<25} {:<40} {:>8} {:>16,.3f} {:>16,.2f}'.format(category[0:25],hostName[0:40], hours, round(hourlyRecurringFee,3), round(recurringFee,2)))
+                    print ('{:<35} {:<30} {:>8} {:>16,.3f} {:>16,.2f}'.format(hostName[0:35],category[0:30], hours, round(hourlyRecurringFee,3), round(recurringFee,2)))
             print()
 
 
             print ()
-            print ("** MONTLY ITEMS BILLED IN ADVANCE")
+            print ("** MONTHLY & OTHER ITEMS INVOICED IN ADVANCE")
             print ()
 
             for item in Billing_Invoice['invoiceTopLevelItems']:
                 associated_children = client['Billing_Invoice_Item'].getAssociatedChildren(id=item['id'])
-                if 'hourlyRecurringFee' not in item:
+                if 'hourlyRecurringFee' not in item and float(item['recurringFee'])>0:
                     recurringFee = float(item['recurringFee'])
                     hourlyRecurringFee = 0
                     hours = 0
@@ -137,9 +145,14 @@ for invoice in InvoiceList:
                     else:
                         hostName = "Unnamed Device"
 
+                    #Lookup CategoryCode Description
                     category = item["categoryCode"]
+                    for topLevel in topLevelCategories:
+                        if topLevel['categoryCode'] == category:
+                            category = topLevel['name']
+                            quit
                     # PRINT LINE ITEM DETAIL FOR TOP LEVEL ITEM
-                    print ('{:<25} {:<40} {:>8} {:>16,.3f} {:>16,.2f}'.format(category[0:40],hostName[0:40], hours, round(hourlyRecurringFee,3), round(recurringFee,2)))
+                    print ('{:<35} {:<30} {:>8} {:>16,.3f} {:>16,.2f}'.format(hostName[0:35], category[0:30], hours, round(hourlyRecurringFee,3), round(recurringFee,2)))
             print()
 
 
