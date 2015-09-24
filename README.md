@@ -11,7 +11,7 @@ configuration_to_csv.py | Write configuration report to CSV file for import into
 DeprovisionCCI.py | Lists each CCI in account and asks if you would like to Deprovision
 DeprovisionBM.py | Lists Hourly and Monthly Bare Metal Servers and asks if you would like to Deprovision
 GetNewInvoices.py | Print a report of NEW invoices which have a non zero balance between Start and End date
-GetREcurringInvoices.py | Print a report of Recurring invoices sorted by Hourly vs Monthly between Start and End date
+GetRecurringInvoices.py | Print a report of Recurring invoices sorted by Hourly vs Monthly between Start and End date
 
 **Installation of SL API**
 
