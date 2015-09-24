@@ -1,12 +1,9 @@
-## LOOKUP USER INFO
-
-import SoftLayer, random, string, sys, json, os, configparser, argparse, csv
-from itertools import chain
+import sys, getopt, socket, SoftLayer, json, string, configparser, os, argparse
 
 
 def initializeSoftLayerAPI():
     ## READ CommandLine Arguments and load configuration file
-    parser = argparse.ArgumentParser(description="The script is used to place an order using a saved quote.")
+    parser = argparse.ArgumentParser(description="Configuration Report prints details of BareMetal Servers such as Network, VLAN, and hardware configuration")
     parser.add_argument("-u", "--username", help="SoftLayer API Username")
     parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
     parser.add_argument("-c", "--config", help="config.ini file to load")
@@ -43,30 +40,14 @@ def initializeSoftLayerAPI():
 
 client = initializeSoftLayerAPI()
 
+package = client['Product_Package'].getobject(id=148)
 
-## Get list of all Open Tickets
-result = client['Account'].getOpenTickets()
+print (json.dumps(package,indent=4))
 
-## iterate through tickets and write ticket info to CSV file
-for ticket in result:
-    id = ticket['id']
-    title = ticket['title']
-    createDate = ticket['createDate']
-    modifyDate = ticket['modifyDate']
-    assigneduserId = ticket['assignedUserId']
-    user = client['User_Customer'].getObject(id=assigneduserId)
-    username = user['username']
-    priority = ticket['priority']
-    status = ticket['status']['name']
-    row={'id': id, 'title': title, 'createDate': createDate, 'modifyDate': modifyDate, 'username': username,  'priority': priority, 'status': status}
-    csvwriter.writerow(row)
-    print ('id:', id)
-    print ('create:', createDate)
-    print ('Title:', title)
-    print ('User:', username)
-    print ('Priority:', priority)
-    print ('Status:', status)
-    print ('=======================================')
-    print
-## Close CSV file
-out_file.close()
+price = client['Product_Item_Price'].getObject(id=37422)
+print (json.dumps(price,indent=4))
+
+
+
+price = client['Product_Item_Price'].getPackageReferences(id=37422)
+print (json.dumps(price,indent=4))

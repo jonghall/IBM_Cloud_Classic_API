@@ -141,6 +141,8 @@ container['hardware'] = servers
 
 verify = client['Billing_Order_Quote'].verifyOrder(container, id=quoteid)
 
+print (json.dumps(order, indent=4))
+
 provision=input ("Submit order for provisioning [Y/N]? ")
 
 if provision=="Y":

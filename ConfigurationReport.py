@@ -37,7 +37,7 @@ def initializeSoftLayerAPI():
         if args.apikey == None:
             print("You must specify a APIKEY with the username.")
             quit()
-        client = SoftLayer.Client(username=args.username, api_key=args.apikey, endpoint_url='https://api.service.softlayer.com/xmlrpc/v3.1/')
+        client = SoftLayer.Client(username=args.username, api_key=args.apikey)
     return client
 
 
@@ -272,13 +272,13 @@ for hardware in hardwarelist:
         storagerow['type'] = storage['nasType']
         if 'serviceResourceBackendIpAddress' in storage.keys():
             storagerow['address'] = storage['serviceResourceBackendIpAddress']
-        storagerow['capacity'] = storage['capacityGb']
-        storagerow['iops'] = storage['iops']
+        #storagerow['capacity'] = storage['capacityGb']
+        #storagerow['iops'] = storage['iops']
         if 'notes' in storage.keys(): storagerow['notes'] = storage['notes']
         data.append(storagerow)
-    print("NETWORK STORAGE AUTHORIZED")
-    print(TablePrinter(storageFormat, ul='=')(data))
-    print("")
+    #print("NETWORK STORAGE AUTHORIZED")
+    #print(TablePrinter(storageFormat, ul='=')(data))
+    #print("")
 
     #
     # POPULATE TABLE WITH COMPONENT DATA

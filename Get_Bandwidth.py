@@ -6,7 +6,7 @@ from itertools import chain
 
 def initializeSoftLayerAPI():
     ## READ CommandLine Arguments and load configuration file
-    parser = argparse.ArgumentParser(description="The script is used to place an order using a saved quote.")
+    parser = argparse.ArgumentParser(description="Get Bandwidth.")
     parser.add_argument("-u", "--username", help="SoftLayer API Username")
     parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
     parser.add_argument("-c", "--config", help="config.ini file to load")
@@ -44,29 +44,27 @@ def initializeSoftLayerAPI():
 client = initializeSoftLayerAPI()
 
 
-## Get list of all Open Tickets
-result = client['Account'].getOpenTickets()
+## PROMPT FOR Files to use
+#outputname=input("Filename to output: ")
+
+## OPEN CSV FILE FOR OUTPUT
+#fieldnames = ['id', 'title', 'createDate', 'modifyDate', 'username', 'priority', 'status']
+#out_file = open(outputname,'w',newline='')
+
+#csvwriter = csv.DictWriter(out_file, delimiter=',', fieldnames=fieldnames)
+#csvwriter.writerow(dict((fn,fn) for fn in fieldnames))
+
+hardware = client['Account'].getHardware()
+
+
+for server in hardware:
+    result = client['Hardware'].getOutboundPublicBandwidthUsage(id=server['id'])
+    print ("Server %s bandwidth usage is %s" % (server['hostname'], result))
+
+
 
 ## iterate through tickets and write ticket info to CSV file
-for ticket in result:
-    id = ticket['id']
-    title = ticket['title']
-    createDate = ticket['createDate']
-    modifyDate = ticket['modifyDate']
-    assigneduserId = ticket['assignedUserId']
-    user = client['User_Customer'].getObject(id=assigneduserId)
-    username = user['username']
-    priority = ticket['priority']
-    status = ticket['status']['name']
-    row={'id': id, 'title': title, 'createDate': createDate, 'modifyDate': modifyDate, 'username': username,  'priority': priority, 'status': status}
-    csvwriter.writerow(row)
-    print ('id:', id)
-    print ('create:', createDate)
-    print ('Title:', title)
-    print ('User:', username)
-    print ('Priority:', priority)
-    print ('Status:', status)
-    print ('=======================================')
-    print
+
+
 ## Close CSV file
-out_file.close()
+##out_file.close()

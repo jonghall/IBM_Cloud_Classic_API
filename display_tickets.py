@@ -46,6 +46,7 @@ client = initializeSoftLayerAPI()
 
 ## Get list of all Open Tickets
 result = client['Account'].getOpenTickets()
+print ('=======================================')
 
 ## iterate through tickets and write ticket info to CSV file
 for ticket in result:
@@ -58,8 +59,6 @@ for ticket in result:
     username = user['username']
     priority = ticket['priority']
     status = ticket['status']['name']
-    row={'id': id, 'title': title, 'createDate': createDate, 'modifyDate': modifyDate, 'username': username,  'priority': priority, 'status': status}
-    csvwriter.writerow(row)
     print ('id:', id)
     print ('create:', createDate)
     print ('Title:', title)
@@ -68,5 +67,4 @@ for ticket in result:
     print ('Status:', status)
     print ('=======================================')
     print
-## Close CSV file
-out_file.close()
+
