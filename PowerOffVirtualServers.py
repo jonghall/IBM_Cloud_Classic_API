@@ -53,6 +53,12 @@ client = initializeSoftLayerAPI()
 ## ID = VM ID (found via SLCLI VS LIST)
 ## HOSTNAME = SL Hostname (used for display only)
 ## WAIT = # of second to wait after powering off VM before moving to next VM
+## Example csv file
+## Order,id,hostname,wait
+## 1,13405579,  centos02 ,60
+## 2,13405577,  centos01 ,30
+## 3,13405581,  centos03 ,30
+
 
 filename=input("Filename of servers: ")
 
