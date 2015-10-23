@@ -12,6 +12,8 @@ DeprovisionCCI.py | Lists each CCI in account and asks if you would like to Depr
 DeprovisionBM.py | Lists Hourly and Monthly Bare Metal Servers and asks if you would like to Deprovision
 GetNewInvoices.py | Print a report of NEW invoices which have a non zero balance between Start and End date
 GetRecurringInvoices.py | Print a report of Recurring invoices sorted by Hourly vs Monthly between Start and End date
+PowerOffVirtualServers.py| Soft Shutdown, and power off virtual server based on list contained in CSV file
+PowerOnVirtualServers.py| Power on virtual server in controlled fasion based on list contained in CSV file
 
 **Installation of SL API**
 
