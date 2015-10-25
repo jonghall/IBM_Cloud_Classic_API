@@ -42,7 +42,7 @@ result = client['Account'].getVirtualGuests()
 for child in result:
     vmid=child['id']
     vguest = client['Virtual_Guest'].getObject(id=vmid)
-    prompt = input("Would you like to submit deprovisiokn request for %s [Y/N]?" % vguest['fullyQualifiedDomainName'])
+    prompt = input("Would you like to submit deprovision request for %s [Y/N]?" % vguest['fullyQualifiedDomainName'])
     if (prompt == "Y" or prompt == "y"):
         print ("Deprovisioning CCI %s." % (vguest['fullyQualifiedDomainName']))
         try:
