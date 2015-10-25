@@ -61,6 +61,7 @@ enddate=input("Report End Date (MM/DD/YYYY): ")
 print()
 print("Looking up invoices....")
 
+topLevelCategories = client['Product_Item_Category'].getTopLevelCategories()
 InvoiceList = client['Account'].getInvoices(filter={
         'invoices': {
             'createDate': {
@@ -77,7 +78,7 @@ InvoiceList = client['Account'].getInvoices(filter={
 
 print ()
 print ('{:<40} {:<40} {:>18} {:>16} {:>16} {:<16}'.format("Invoice Date /", "Invoice Number /", "Recurring Charges", "OneTime Charges", "Invoice Amount", "Type"))
-print ('{:<40} {:<40} {:>18} {:>16} {:>16} {:<16}'.format("Top Level Item", "Hostname        ", "                 ", "               ", "              ", "    "))
+print ('{:<40} {:<40} {:>18} {:>16} {:>16} {:<16}'.format("Hostname      ", "Description     ", "                 ", "               ", "              ", "    "))
 print ('{:<40} {:<40} {:>18} {:>16} {:>16} {:<16}'.format("==============", "================", "=================", "===============", "==============", "===="))
 for invoice in InvoiceList:
     if invoice['typeCode'] == "NEW" or invoice['typeCode'] == "ONE-TIME-CHARGE":
@@ -99,8 +100,14 @@ for invoice in InvoiceList:
                     hostName = item['hostName']+"."+item['domainName']
                 else:
                     hostName = "Unnamed Device"
+
+
                 # PRINT TOP LEVEL ITEMS DETAIL FOR  INVOICE
-                category = item["categoryCode"][0:25]
                 if recurringFee >0 or oneTimeFee > 0:
-                    print ('{:<40} {:<40} {:>18,.2f} {:>16,.2f}'.format(category[0:40],hostName[0:40], round(recurringFee,2), round(oneTimeFee,2)))
+                    category = item["categoryCode"]
+                    for topLevel in topLevelCategories:
+                        if topLevel['categoryCode'] == category:
+                            category = topLevel['name']
+                            quit
+                    print ('{:<40} {:<40} {:>18,.2f} {:>16,.2f}'.format(hostName[0:40], category[0:40], round(recurringFee,2), round(oneTimeFee,2)))
             print()
