@@ -7,8 +7,6 @@ __author__ = 'jonhall'
 
 import sys, getopt, socket, SoftLayer, json, string, configparser, os, argparse, csv
 
-
-
 def initializeSoftLayerAPI():
     ## READ CommandLine Arguments and load configuration file
     parser = argparse.ArgumentParser(description="Print a report of Recurring invoices sorted by Hourly vs Monthly between Start and End date.")
@@ -72,7 +70,6 @@ csvwriter.writerow(dict((fn, fn) for fn in fieldnames))
 ## OPEN CSV FILE FOR OUTPUT
 
 
-
 print()
 print("Looking up invoices....")
 
@@ -119,11 +116,6 @@ for invoice in InvoiceList:
             else:
                 hostName = "Unnamed Device"
 
-            if category == "performance_storage_iscsi" or category == "storage_service_enterprise" or category == "Network Attached Storageq0":
-                   #SoftLayer_Billing_Item_Network_PerformanceStorage_Iscsi
-                    storage = client["SoftLayer_Network_Storage"].getObject(id=item["billingItemId"])
-                    print (json.dumps(storage,ident=4))
-                    quit()
 
             if 'hourlyRecurringFee' in item:
                 instanceType = "Hourly"
@@ -155,7 +147,6 @@ for invoice in InvoiceList:
                    'Type': Billing_Invoice['typeCode']
                     }
             csvwriter.writerow(row)
-
 ##close CSV File
 outfile.close()
 
