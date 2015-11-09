@@ -56,6 +56,7 @@ print ()
 
 startdate=input("Report Start Date (MM/DD/YYYY): ")
 enddate=input("Report End Date (MM/DD/YYYY): ")
+vsicredit=float(input("VSI Hours to Credit per VSI (x): "))
 outputname=input("CSV Filename: ")
 
 outfile = open(outputname, 'w')
@@ -63,7 +64,7 @@ csvwriter = csv.writer(outfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE
 
 
 fieldnames = ['Invoice_Date', 'Invoice_Number', 'InstanceType', 'hostName', 'Category', 'Description',
-             'Hours', 'Hourly_Rate', 'RecurringCharge', 'InvoiceTotal', 'InvoiceRecurring', 'Type']
+             'Hours', 'Hourly_Rate', 'RecurringCharge', "Credit", 'InvoiceTotal', 'InvoiceRecurring', 'Type']
 csvwriter = csv.DictWriter(outfile, delimiter=',', fieldnames=fieldnames)
 csvwriter.writerow(dict((fn, fn) for fn in fieldnames))
 
@@ -107,6 +108,7 @@ for invoice in InvoiceList:
 
         # ITERATE THROUGH DETAIL
         for item in Billing_Invoice['invoiceTopLevelItems']:
+            credit = 0
             count=count + 1
             print ("%s of %s" % (count, Billing_Invoice['invoiceTopLevelItemCount']), end='\r')
             category = item["categoryCode"]
@@ -116,13 +118,14 @@ for invoice in InvoiceList:
             else:
                 hostName = "Unnamed Device"
 
-
             if 'hourlyRecurringFee' in item:
                 instanceType = "Hourly"
                 recurringFee = float(client['Billing_Invoice_Item'].getTotalRecurringAmount(id=item['id']))
                 associated_children = client['Billing_Invoice_Item'].getNonZeroAssociatedChildren(id=item['id'],mask="hourlyRecurringFee")
                 hourlyRecurringFee = float(item['hourlyRecurringFee']) + sum(float(child['hourlyRecurringFee']) for child in associated_children)
                 hours = round(float(item['recurringFee']) / hourlyRecurringFee)
+                if hours > vsicredit:
+                   credit = vsicredit * hourlyRecurringFee
             else:
                 instanceType = "Monthly/Other"
                 hourlyRecurringFee = 0
@@ -142,6 +145,7 @@ for invoice in InvoiceList:
                    'Hours': hours,
                    'Hourly_Rate': round(hourlyRecurringFee,3),
                    'RecurringCharge': round(recurringFee,2),
+                   'Credit': credit,
                    'InvoiceTotal': float(Billing_Invoice['invoiceTotalAmount']),
                    'InvoiceRecurring': float(Billing_Invoice['invoiceTotalRecurringAmount']),
                    'Type': Billing_Invoice['typeCode']
