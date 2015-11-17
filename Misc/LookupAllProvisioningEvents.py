@@ -13,17 +13,18 @@ def convert_timestamp(sldate):
     formatedDate = datetime.strptime(formatedDate, "%Y-%m-%dT%H:%M:%S%z")
     return formatedDate
 
-def initializeSoftLayerAPI(configfile):
-
-    if configfile != None:
-        filename=args.config
+def initializeSoftLayerAPI(user, key, configfile):
+    if user == None and key == None:
+        if configfile != None:
+            filename=args.config
+        else:
+            filename="config.ini"
+        config = configparser.ConfigParser()
+        config.read(filename)
+        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'],endpoint_url=SoftLayer.API_PRIVATE_ENDPOINT)
     else:
-        filename="config.ini"
-
-    config = configparser.ConfigParser()
-    config.read(filename)
-    client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'],endpoint_url=SoftLayer.API_PRIVATE_ENDPOINT)
-
+        #client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'],endpoint_url=SoftLayer.API_PRIVATE_ENDPOINT)
+        client = SoftLayer.Client(username=user, api_key=key)
     return client
 
 
@@ -43,7 +44,8 @@ parser.add_argument("-o", "--output", help="Outputfile")
 
 args = parser.parse_args()
 
-client = initializeSoftLayerAPI(args.config)
+client = initializeSoftLayerAPI(args.username, args.apikey, args.config)
+
 
 if args.startdate == None:
     startdate=input("Report Start Date (MM/DD/YYYY): ")
