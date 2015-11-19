@@ -13,6 +13,12 @@ def convert_timestamp(sldate):
     formatedDate = datetime.strptime(formatedDate, "%Y-%m-%dT%H:%M:%S%z")
     return formatedDate
 
+def getDescription(categoryCode, detail):
+    for item in detail:
+        if item['categoryCode']==categoryCode:
+            return item['description']
+    return "Not Found"
+
 def initializeSoftLayerAPI(user, key, configfile):
     if user == None and key == None:
         if configfile != None:
@@ -62,7 +68,7 @@ if args.output == None:
 else:
     outputname=args.output
 
-fieldnames = ['InvoiceID','ID', 'Hostname', 'CreateDate', 'CreateTime', 'PowerOnDate', 'PowerOnTime', 'PowerOnDelta', 'ProvisionedDate', 'ProvisionedTime', 'ProvisionedDelta']
+fieldnames = ['InvoiceID','ID', 'Datacenter', 'Product', 'Cores', 'Memory', 'Disk', 'OS', 'Hostname', 'CreateDate', 'CreateTime', 'PowerOnDate', 'PowerOnTime', 'PowerOnDelta', 'ProvisionedDate', 'ProvisionedTime', 'ProvisionedDelta']
 
 outfile = open(outputname, 'w')
 csvwriter = csv.DictWriter(outfile, delimiter=',', fieldnames=fieldnames)
@@ -91,26 +97,61 @@ InvoiceList = client['Account'].getInvoices(mask='createDate,typeCode, id, invoi
 
 for invoice in InvoiceList:
     invoiceID = invoice['id']
-    invoiceTopLevelItems = client['Billing_Invoice'].getInvoiceTopLevelItems(id=invoiceID)
+    invoicedetail=""
+    while invoicedetail is "":
+        try:
+            invoicedetail = client['Billing_Invoice'].getObject(id=invoiceID, mask="closedDate, invoiceTopLevelItems, invoiceTopLevelItems.product,invoiceTopLevelItems.location")
+        except SoftLayer.SoftLayerAPIError as e:
+            print("Error: %s, %s" % (e.faultCode, e.faultString))
+            time.sleep(5)
+
+    #print (json.dumps(invoicedetail,indent=4))
+
     # GET associated items for recurring and onetime totals per Top Level TIem
+    #print (json.dumps(invoicedetail,indent=4))
+    invoiceTopLevelItems=invoicedetail['invoiceTopLevelItems']
+    invoiceDate=convert_timestamp(invoicedetail["closedDate"])
     for item in invoiceTopLevelItems:
-        if item["categoryCode"]=="guest_core":
-            #print (json.dumps(item,indent=4))
-            invoiceDate=convert_timestamp(item["invoice"]["closedDate"])
+        if item['categoryCode']=="guest_core":
+            billingItemId = item['id']
+            location=item['location']['name']
             hostName = item['hostName']+"."+item['domainName']
             createDate = convert_timestamp(item['createDate'])
-            billingItemId = item['id']
-            #SoftLayer_Billing_Invoice_Item::getBillingItem
-            billingInvoiceItem = client['Billing_Invoice_Item'].getBillingItem(id=billingItemId, mask="provisionTransaction")
-            provisionTransaction = billingInvoiceItem['provisionTransaction']
-            #print (json.dumps(billingInvoiceItem,indent=4))
-            provisionId = provisionTransaction['id']
-            guestId = provisionTransaction['guestId']
-            provisionDate = convert_timestamp(provisionTransaction['modifyDate'])
-            #print ("HostName %s" % (hostName))
-            #print ("InvoiceDate %s " % (invoiceDate))
-            #print ("CreateDate %s" % (createDate))
-            #print ("provisionDate %s" % (provisionDate))
+            product=item['description']
+            cores=""
+            billing_detail=""
+            while billing_detail is "":
+                try:
+                    billing_detail = client['Billing_Invoice_Item'].getFilteredAssociatedChildren(id=billingItemId)
+                except SoftLayer.SoftLayerAPIError as e:
+                    print("Error: %s, %s" % (e.faultCode, e.faultString))
+                    time.sleep(5)
+            os=getDescription("os", billing_detail)
+            memory=getDescription("ram", billing_detail)
+            disk=getDescription("guest_disk0", billing_detail)
+
+            if 'product' in item:
+                product=item['product']['description']
+                cores=item['product']['totalPhysicalCoreCount']
+
+            billingInvoiceItem=""
+            while billingInvoiceItem is "":
+                try:
+                   billingInvoiceItem = client['Billing_Invoice_Item'].getBillingItem(id=billingItemId, mask="provisionTransaction")
+                except SoftLayer.SoftLayerAPIError as e:
+                   print("Error: %s, %s" % (e.faultCode, e.faultString))
+                   time.sleep(5)
+
+            if 'provisionTransaction' in billingInvoiceItem:
+                provisionTransaction = billingInvoiceItem['provisionTransaction']
+                provisionId = provisionTransaction['id']
+                guestId = provisionTransaction['guestId']
+                provisionDate = convert_timestamp(provisionTransaction['modifyDate'])
+            else:
+                provisionTransaction = "0"
+                provisionId = "0"
+                guestId = "0"
+                provisionDate = convert_timestamp(item['createDate'])
 
             eventdate = provisionDate
             powerOnDate = provisionDate
@@ -120,7 +161,7 @@ for invoice in InvoiceList:
             events = client['Event_Log'].getAllObjects(filter={'objectId': {'operation': guestId},
                                                              'eventName': {'operation': 'Power On'}})
             for event in events:
-                print (json.dumps(event,indent=4))
+                #print (json.dumps(event,indent=4))
                 if event['eventName']=="Power On":
                     eventdate = event["eventCreateDate"]
                     eventdate = eventdate[0:29]+eventdate[-2:]
@@ -132,32 +173,44 @@ for invoice in InvoiceList:
             if found==1:
                 row = {'InvoiceID': invoiceID,
                    'ID': guestId,
+                   'Datacenter': location,
+                   'Product': product,
+                   'Cores': cores,
+                   'OS': os,
+                   'Memory': memory,
+                   'Disk': disk,
                    'Hostname': hostName,
                    'CreateDate': datetime.strftime(createDate,"%Y-%m-%d"),
-                   'CreateTime': datetime.strftime(createDate,"%H:%M:%S%z"),
+                   'CreateTime': datetime.strftime(createDate,"%H:%M:%S"),
                    'PowerOnDate': datetime.strftime(powerOnDate,"%Y-%m-%d"),
-                   'PowerOnTime': datetime.strftime(powerOnDate,"%H:%M:%S%z"),
+                   'PowerOnTime': datetime.strftime(powerOnDate,"%H:%M:%S"),
                    'PowerOnDelta': convert_timedelta(powerOnDate-createDate),
                    'ProvisionedDate': datetime.strftime(provisionDate,"%Y-%m-%d"),
-                   'ProvisionedTime': datetime.strftime(provisionDate,"%H:%M:%S%z"),
+                   'ProvisionedTime': datetime.strftime(provisionDate,"%H:%M:%S"),
                    'ProvisionedDelta': convert_timedelta(provisionDate-createDate)
                    }
-                print (json.dumps(row,indent=4))
+                print(json.dumps(row))
                 csvwriter.writerow(row)
             else:
                 row = {'InvoiceID': invoiceID,
                    'ID': guestId,
+                   'Datacenter': location,
+                   'Product': product,
+                   'Cores': cores,
+                   'OS': os,
+                   'Memory': memory,
+                   'Disk': disk,
                    'Hostname': hostName,
                    'CreateDate': datetime.strftime(createDate,"%Y-%m-%d"),
-                   'CreateTime': datetime.strftime(createDate,"%H:%M:%S%z"),
+                   'CreateTime': datetime.strftime(createDate,"%H:%M:%S"),
                    'PowerOnDate': 'Not Available',
                    'PowerOnTime': 'Not Available',
-                   'PowerOnDelta': convert_timedelta(powerOnDate-createDate),
+                   'PowerOnDelta': '0',
                    'ProvisionedDate': datetime.strftime(provisionDate,"%Y-%m-%d"),
-                   'ProvisionedTime': datetime.strftime(provisionDate,"%H:%M:%S%z"),
+                   'ProvisionedTime': datetime.strftime(provisionDate,"%H:%M:%S"),
                    'ProvisionedDelta': convert_timedelta(provisionDate-createDate)
                    }
-                print (json.dumps(row,indent=4))
+                print(json.dumps(row))
                 csvwriter.writerow(row)
 ##close CSV File
 outfile.close()
