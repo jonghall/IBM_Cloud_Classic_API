@@ -158,6 +158,7 @@ for invoice in InvoiceList:
 
             found=0
 
+            # GET OLDEST POWERON EVENT FROM EVENTLOG FOR GUESTID AS INITIAL RESOURCE ALLOCATION TIMESTAMP
             events = client['Event_Log'].getAllObjects(filter={'objectId': {'operation': guestId},
                                                              'eventName': {'operation': 'Power On'}})
             for event in events:
