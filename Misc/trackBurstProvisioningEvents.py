@@ -92,11 +92,27 @@ while run is "":
             }
         })
     logging.info('Found %s VirtualGuests being provisioned.' % (len(virtualGuests)))
-    # print (json.dumps(virtualGuests,indent=4))
+
+    # output html
+    htmlfile = open("/var/www/html/current.html", "w")
+    htmlfile.write('<?xml version="1.0" encoding="utf-8"?>')
+    htmlfile.write('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"')
+    htmlfile.write('"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">')
+    htmlfile.write('<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">')
+    htmlfile.write('<head>')
+    htmlfile.write('<title>Current Provisioning Jobs</title>')
+    htmlfile.write('<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />')
+    htmlfile.write('<meta http-equiv="refresh" content="60" />')
+    htmlfile.write('</head>')
+    htmlfile.write('<body>')
+
     # Open a file in write mode
     output = open("events.txt", "a")
     output.write("\n\n")
     output.write('Provisioning Status Detail at: %s\n' % (datetime.strftime(datetime.now(), "%m/%d/%Y %H:%M:%S")))
+    htmlfile.write(
+        '<p>Provisioning Status Detail at: %s</p>' % (datetime.strftime(datetime.now(), "%m/%d/%Y %H:%M:%S")))
+
     output.write('{:<10} {:<15} {:<12} {:<8} {:<15} {:<8} {:<8} {:<20} {:<15} {:<10}\n'.format("guestId", "hostName",
                                                                                                "datacenter", "tickets",
                                                                                                "createDate", "PowerOn",
@@ -104,6 +120,8 @@ while run is "":
                                                                                                "transactionStatus",
                                                                                                "statusDuration",
                                                                                                "Status"))
+    htmlfile.write(
+        '<table width="100%"><tr><th>guestId</th><th>hostName</th><th>datacenter</th><th>tickets</th><th>createDate</th><th>PowerOn</th><th>delta</th><th>transactionStatus</th><th>statusDuration</th><th>Status</th></tr>')
 
     countVirtualGuestslt30 = 0
     countVirtualGuestsgt30 = 0
@@ -151,13 +169,13 @@ while run is "":
                 logging.warning("Error: %s, %s" % (e.faultCode, e.faultString))
                 time.sleep(5)
         found = 0
-        powerOnDateStamp=datetime.now()
+        powerOnDateStamp = datetime.now()
         for event in events:
-            if event['eventName']=="Power On":
+            if event['eventName'] == "Power On":
 
                 eventdate = event["eventCreateDate"]
-                #eventdate = eventdate[0:29] + eventdate[-2:]
-                #Strip TZ off
+                # eventdate = eventdate[0:29] + eventdate[-2:]
+                # Strip TZ off
                 eventdate = eventdate[0:26]
                 eventdate = datetime.strptime(eventdate, "%Y-%m-%dT%H:%M:%S.%f")
 
@@ -172,7 +190,7 @@ while run is "":
             logging.info('POWERON detail for guestId %s NOT FOUND.' % (guestId))
             powerOnDelta = 0
 
-        status="unknown"
+        status = "unknown"
         logging.info('Classifying provisioning status for guestId %s.' % (guestId))
         if powerOnDelta == 0:
             # IF LESS THAN 30 MINUTES NO PROBLEM ON TRACK
@@ -210,7 +228,12 @@ while run is "":
                                                                                           powerOnDelta, delta,
                                                                                           transactionStatus,
                                                                                           statusDuration, status))
-
+        htmlfile.write(
+            '<tr><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">'
+            '%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td><<td style="text-align: center;">%s</td><td style="text-align: center;">'
+            '%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td></tr>' % (
+            guestId, hostName, datacenter, tickets, createDate, powerOnDelta, delta,
+            transactionStatus, statusDuration, status))
 
         if delta < 30:
             countVirtualGuestslt30 = countVirtualGuestslt30 + 1
@@ -227,20 +250,37 @@ while run is "":
         countVirtualGuestsgt120))
     output.write("OnTrack: %s | Watching: %s | Critical:%s | Stalled:%s\n" % (ontrack, watching, critical, stalled))
 
+    # CREATE HTML TABLES
+    htmlfile.write('</tr></table><br /><br /><b>Provisioning Summary</b><br>')
+    htmlfile.write(
+        '<table width="200"><tr><th style="text-align: left;">Total</th><td style="text-align: center;">%s</td></tr><tr><th style="text-align: left;">LT 30</th><td style="text-align: center;">%s</td></tr>' % (
+        len(virtualGuests), countVirtualGuestslt30))
+    htmlfile.write(
+        '<tr><th style="text-align: left;">GT 30</th><td style="text-align: center;">%s</td></tr><tr><th style="text-align: left;">GT 60</th><td style="text-align: center;">%s</td></tr>' % (
+        countVirtualGuestsgt30, countVirtualGuestsgt60))
+    htmlfile.write(
+        '<tr><th style="text-align: left;">GT 120</th><td style="text-align: center;">%s</td></tr>' % (countVirtualGuestsgt120))
+    htmlfile.write(
+        '<tr><th style="text-align: left;">OnTrack</th><td style="text-align: center;">%s</td></tr><tr><th style="text-align: left;">Watching</th><td style="text-align: center;">%s</td></tr>' % (
+        ontrack, watching))
+    htmlfile.write(
+        '<tr><th style="text-align: left;">Critical</th><td style="text-align: center;">%s</td></tr><tr><th style="text-align: left;">Stalled</th><td style="text-align: center;">%s</td></tr></table>' % (
+        critical, stalled))
+
     logging.info("T:%s | <30:%s | >30:%s | >60:%s | >120:%s | OnTrack: %s | Watching: %s | Critical:%s | Stalled:%s" % (
-        len(virtualGuests), countVirtualGuestslt30, countVirtualGuestsgt30, countVirtualGuestsgt60, countVirtualGuestsgt120,
+        len(virtualGuests), countVirtualGuestslt30, countVirtualGuestsgt30, countVirtualGuestsgt60,
+        countVirtualGuestsgt120,
         ontrack, watching, critical, stalled))
 
     if critical > previouscritical:
         # Send SMS message
         message = (
-                "T:%s | <30:%s | >30:%s | >60:%s | >120:%s | OnTrack: %s | Watching: %s | Critical:%s | Stalled:%s" % (
-                len(virtualGuests), countVirtualGuestslt30, countVirtualGuestsgt30, countVirtualGuestsgt60,
-                countVirtualGuestsgt120, ontrack, watching, critical, stalled))
+            "T:%s | Critical:%s | Stalled:%s | http://web01.ibmsldemo.com/current.html" % (
+                len(virtualGuests), critical, stalled))
         smsclient.messages.create(
-                to="14025988805",
-                from_="+14025908566",
-                body=message,
+            to="14025988805",
+            from_="+14025908566",
+            body=message,
         )
         # Trigger Maker Receipe with details
         url = 'https://maker.ifttt.com/trigger/aficritical/with/key/jehAniL4SfD0glj5AR4IZ5EJKkDJ5uwYfsyEkL7r4_L'
@@ -251,4 +291,5 @@ while run is "":
         previouscritical = critical
         logging.info("Sending SMS message due to increase in critical change.")
     output.close()
+    htmlfile.close()
     time.sleep(300)
