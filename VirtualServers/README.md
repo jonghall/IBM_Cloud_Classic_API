@@ -15,17 +15,18 @@ The *PowerOnVirtualServers.py* script can be used to systematically power on VSI
 Both scripts require a CSV file with the list of VSI's to be powered on or off and their order.   The CSV filename
 can be passed as a paramenter using the follwing:
 ```
-python script.py --input=filename.csv
+python PowerOffVirtualServers --input=filename.csv
 ```
 
 To build CSV file automatically  use *BuildServerListbyDC.py*.   Script will build a sequential list of servers with correct VSI ID numbers.  CSV file can then be modified
 to change order of servers to be PowerOn and PowerOff.    Wait times are set to 0 by default, but should be modified to suit your needs particularily for the PowerOn script.
-To filter by a specfic datacenter specify *--datecenter=*.
+To filter by a specfic datacenter specify the *--datecenter=* parameter.
 ```
 python BuildServerListbyDC.py --datecenter=dal09 --output=serverlist.csv
 ```
 
 *CSV Requirements*
+
 Field | Required |Field Description
 ----- | -------- |-----------------
 Order | Optional |field for tracking or sorting.  Not used by script
