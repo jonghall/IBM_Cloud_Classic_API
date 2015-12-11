@@ -1,4 +1,4 @@
-import sys, getopt, socket, time, SoftLayer, json, string, configparser, os, argparse, csv, math, logging, requests
+import sys, getopt, socket, time, SoftLayer, json, string, configparser, os, argparse, csv, math, logging, requests, shutil
 from datetime import datetime, timedelta, tzinfo
 import pytz
 
@@ -50,7 +50,6 @@ def initializeSoftLayerAPI(user, key, configfile):
     return client
 
 
-
 ## READ CommandLine Arguments and load configuration file
 parser = argparse.ArgumentParser(description="Check Audit Log for VSI.")
 parser.add_argument("-u", "--username", help="SoftLayer API Username")
@@ -59,6 +58,10 @@ parser.add_argument("-c", "--config", help="config.ini file to load")
 args = parser.parse_args()
 
 client = initializeSoftLayerAPI(args.username, args.apikey, args.config)
+
+with open('stats.json', 'r') as fp:
+    stats = json.load(fp)
+
 
 today = datetime.now()
 startdate = datetime.strftime(today, "%m/%d/%Y") + " 0:0:0"
@@ -75,9 +78,10 @@ virtualGuests = client['Account'].getHourlyVirtualGuests(
         }
     })
 logging.info('Found %s VirtualGuests being provisioned.' % (len(virtualGuests)))
+filename="/var/www/html/current"+str(today)+".html"
 
 # OPEN & WRITE HTML FILE
-htmlfile = open("/var/www/html/current.html", "w")
+htmlfile = open(filename, "w")
 htmlfile.write('<?xml version="1.0" encoding="utf-8"?>')
 htmlfile.write('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"')
 htmlfile.write('"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">')
@@ -123,15 +127,6 @@ for virtualGuest in virtualGuests:
     transactionStatus = virtualGuest['activeTransaction']['transactionStatus']['name']
     statusDuration = virtualGuest['activeTransaction']['elapsedSeconds']
 
-    if tickets > 0:
-        message = ("%s Tickets open on guestID %s." % (tickets, guestId))
-        smsclient.messages.create(
-            to="14025988805",
-            from_="+14025908566",
-            body=message,
-        )
-        logging.info("Sending SMS message due to ticket status of GuestId %s." % (guestId))
-
     events = ""
     logging.info('Searching eventlog for POWERON detail for guestId %s.' % (guestId))
     while events is "":
@@ -140,7 +135,6 @@ for virtualGuest in virtualGuests:
                                                                'eventName': {'operation': 'Power On'}})
         except SoftLayer.SoftLayerAPIError as e:
             logging.warning("Error: %s, %s" % (e.faultCode, e.faultString))
-            time.sleep(5)
     found = 0
     powerOnDateStamp = datetime.now()
     for event in events:
@@ -167,23 +161,23 @@ for virtualGuest in virtualGuests:
     logging.info('Classifying provisioning status for guestId %s.' % (guestId))
     if powerOnDelta == 0:
         # IF LESS THAN 30 MINUTES NO PROBLEM ON TRACK
-        if delta <= 30:
+        if delta <= 20:
             status = "ONTRACK/NOPWR"
             ontrack = ontrack + 1
-        # IF NO POWERON AFTER 30 MINUTES MARK CRITICAL
-        if delta > 30:
+        # IF NO POWERON AFTER 20 MINUTES MARK CRITICAL
+        if delta > 20:
             status = "CRITICAL/NOPWR"
             critical = critical + 1
-        if delta > 120:
+        if delta > 60:
             status = "STALLED/NOPWR"
             stalled = stalled + 1
     else:
         # IF LESS THAN 30 MINUTES NO PROBLEM ON TRACK
-        if (delta - powerOnDelta) <= 30:
+        if (delta - powerOnDelta) <= 40:
             status = "ONTRACK/PWR"
             ontrack = ontrack + 1
         # IF TOTAL TIME MINUS POWERON BETWEEN 30-60 MINUTES WERE GOOD BUT WATCH.
-        if (delta - powerOnDelta) > 30 and (delta - powerOnDelta) < 60:
+        if (delta - powerOnDelta) > 40 and (delta - powerOnDelta) < 60:
             status = "ATRISK/PWR"
             watching = watching + 1
         # IF TOTAL TIME MINUS POWERON LONGER THAN AN HOUR BUT LESS THAN 2 MARK CRITICAL.
@@ -194,13 +188,19 @@ for virtualGuest in virtualGuests:
         if delta > 120:
             status = "STALLED/PWR"
             stalled = stalled + 1
-
-    htmlfile.write(
-        '<tr><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">'
-        '%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td><<td style="text-align: center;">%s</td><td style="text-align: center;">'
-        '%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td></tr>' % (
-        guestId, hostName, datacenter, tickets, createDate, powerOnDelta, delta,
-        transactionStatus, statusDuration, status))
+    #turn cell background red
+    if status=="CRITICAL/PWR" or status=="CRITICAL/NOPWR" or status=="STALLED/PWR" or status=="STALLED/NOPWR":
+        htmlfile.write(
+            '<tr><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">'
+            '%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td><<td style="text-align: center;background-color:#FF0000">%s</td><td style="text-align: center;">'
+            '%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td></tr>' % (
+            guestId, hostName, datacenter, tickets, str(createDateStamp), powerOnDelta, delta,transactionStatus, round(statusDuration/60,1), status))
+    else:
+        htmlfile.write(
+            '<tr><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">'
+            '%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td><<td style="text-align: center;">%s</td><td style="text-align: center;">'
+            '%s</td><td style="text-align: center;">%s</td><td style="text-align: center;">%s</td></tr>' % (
+            guestId, hostName, datacenter, tickets, str(createDateStamp), powerOnDelta, delta,transactionStatus, round(statusDuration/60,1), status))
 
     if delta < 30:
         countVirtualGuestslt30 = countVirtualGuestslt30 + 1
@@ -234,22 +234,37 @@ logging.info("T:%s | <30:%s | >30:%s | >60:%s | >120:%s | OnTrack: %s | Watching
     len(virtualGuests), countVirtualGuestslt30, countVirtualGuestsgt30, countVirtualGuestsgt60,
     countVirtualGuestsgt120,
     ontrack, watching, critical, stalled))
+htmlfile.close()
+# Move src to dst (mv src dst)
+shutil.move(filename, "/var/www/html/current.html")
 
-if critical > 0:
-    # Send SMS message
-    message = (
-        "%s Critical Jobs.  View at http://web01.ibmsldemo.com/current.html" % (
-            critical))
-    smsclient.messages.create(
-        to="14025988805",
-        from_="+14025908566",
-        body=message,
-    )
+if critical > stats['critical'] or stalled > stats['stalled']:
     # Trigger Maker Receipe with details
+    sg = sendgrid.SendGridClient('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')
+    message = sendgrid.Mail()
+    #message.add_to(['Jon Hall <jonhall@us.ibm.com>','Michelle Chank <mchank@us.ibm.com>'])
+    message.add_to('Jon Hall <jonhall@us.ibm.com>')
+    message.set_subject('AFI Provisioning Critical')
+    body=('<p><b>%s Critical/Stalled Jobs increasing from %s.</b>  View at <a href="http://web01.ibmsldemo.com/current.html">http://web01.ibmsldemo.com/current.html</a></p>' % (
+            critical+stalled, stats['critical']+stats['stalled']))
+    message.set_html(body)
+    message.set_from('Jon Hall <jonhall@us.ibm.com>')
+    status, msg = sg.send(message)
+
+    # Trigger IFTT Maker Receipe with details
     url = 'https://maker.ifttt.com/trigger/aficritical/with/key/jehAniL4SfD0glj5AR4IZ5EJKkDJ5uwYfsyEkL7r4_L'
     data = {'value1': len(virtualGuests),
             'value2': critical,
             'value3': stalled}
     req = requests.post(url, json=data)
-    logging.info("Sending SMS message due to increase in critical change.")
+    logging.info("Sending messages due to increasing critical status.")
 
+# SAVE STATS FOR NEXT RUN
+stats = {"virtualGuests": len(virtualGuests),
+         "ontrack": ontrack,
+         "watching": watching,
+         "critical": critical,
+         "stalled": stalled}
+
+with open('stats.json', 'w') as fp:
+    json.dump(stats, fp)
