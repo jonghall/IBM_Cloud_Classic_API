@@ -15,6 +15,7 @@ FIELDS REQUIRED: ID, HOSTNAME, WAIT
 
 Field | Description
 -----   -----------
+Order | Optional field for tracking or sorting.  Not used by script
 ID | VSI ID (found via SLCLI VS LIST). If specified it will used instead of hostName (prefered). 
 HOSTNAME | SL Hostname. Must be unique if you don't specify the correct VSI ID.  Script will it look up.
 WAIT | # of second to wait after powering on or off VM before moving to next VM
