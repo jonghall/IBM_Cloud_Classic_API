@@ -1,11 +1,15 @@
-import sys, getopt, socket, time,  SoftLayer, json, string, configparser, os, argparse, csv
+import sys, getopt, socket, time,  SoftLayer, json, string, configparser, os, argparse, csv, math
 from datetime import datetime, timedelta, tzinfo
 import pytz
 
 def convert_timedelta(duration):
-    seconds = duration.seconds
-    minutes = round((seconds / 60),2)
-    return minutes
+    days, seconds = duration.days, duration.seconds
+    hours = days * 24 + seconds // 3600
+    minutes = (seconds % 3600) // 60
+    seconds = seconds % 60
+    totalminutes = round((days * 1440) + (hours * 60) + minutes + (seconds/60),1)
+    return totalminutes
+
 
 def convert_timestamp(sldate):
     formatedDate = sldate
@@ -47,7 +51,7 @@ parser.add_argument("-c", "--config", help="config.ini file to load")
 parser.add_argument("-s", "--startdate", help="start date mm/dd/yy")
 parser.add_argument("-e", "--enddate", help="End date mm/dd/yyyy")
 parser.add_argument("-o", "--output", help="Outputfile")
-
+parser.add_argument("-v", "--vsicredit", help="Credit Hours")
 args = parser.parse_args()
 
 client = initializeSoftLayerAPI(args.username, args.apikey, args.config)
@@ -68,7 +72,14 @@ if args.output == None:
 else:
     outputname=args.output
 
-fieldnames = ['InvoiceID','ID', 'Datacenter', 'Product', 'Cores', 'Memory', 'Disk', 'OS', 'Hostname', 'CreateDate', 'CreateTime', 'PowerOnDate', 'PowerOnTime', 'PowerOnDelta', 'ProvisionedDate', 'ProvisionedTime', 'ProvisionedDelta']
+if args.vsicredit == None:
+    vsicredit=0
+else:
+    vsicredit=float(args.vsicredit)
+
+fieldnames = ['InvoiceID', 'BillingItemId', 'TransactionID', 'Datacenter', 'Product', 'Cores', 'Memory', 'Disk', 'OS', 'Hostname',
+              'CreateDate', 'CreateTime', 'PowerOnDate', 'PowerOnTime', 'PowerOnDelta', 'ProvisionedDate',
+              'ProvisionedTime', 'ProvisionedDelta', 'CancellationDate', 'CancellationTime', 'HoursUsed', 'HourlyRecurringFee', 'CreditHours', 'ActualCreditHours', 'CreditAmount']
 
 outfile = open(outputname, 'w')
 csvwriter = csv.DictWriter(outfile, delimiter=',', fieldnames=fieldnames)
@@ -105,30 +116,29 @@ for invoice in InvoiceList:
             print("Error: %s, %s" % (e.faultCode, e.faultString))
             time.sleep(5)
 
-    #print (json.dumps(invoicedetail,indent=4))
-
-    # GET associated items for recurring and onetime totals per Top Level TIem
-    #print (json.dumps(invoicedetail,indent=4))
     invoiceTopLevelItems=invoicedetail['invoiceTopLevelItems']
     invoiceDate=convert_timestamp(invoicedetail["closedDate"])
     for item in invoiceTopLevelItems:
         if item['categoryCode']=="guest_core":
-            billingItemId = item['id']
+            itemId = item['id']
+            billingItemId = item['billingItemId']
             location=item['location']['name']
             hostName = item['hostName']+"."+item['domainName']
-            createDate = convert_timestamp(item['createDate'])
+            createDateStamp = convert_timestamp(item['createDate'])
             product=item['description']
             cores=""
             billing_detail=""
             while billing_detail is "":
                 try:
-                    billing_detail = client['Billing_Invoice_Item'].getFilteredAssociatedChildren(id=billingItemId)
+                    billing_detail = client['Billing_Invoice_Item'].getFilteredAssociatedChildren(id=itemId)
                 except SoftLayer.SoftLayerAPIError as e:
                     print("Error: %s, %s" % (e.faultCode, e.faultString))
                     time.sleep(5)
+
             os=getDescription("os", billing_detail)
             memory=getDescription("ram", billing_detail)
             disk=getDescription("guest_disk0", billing_detail)
+
 
             if 'product' in item:
                 product=item['product']['description']
@@ -137,7 +147,7 @@ for invoice in InvoiceList:
             billingInvoiceItem=""
             while billingInvoiceItem is "":
                 try:
-                   billingInvoiceItem = client['Billing_Invoice_Item'].getBillingItem(id=billingItemId, mask="provisionTransaction")
+                   billingInvoiceItem = client['Billing_Invoice_Item'].getBillingItem(id=itemId, mask="cancellationDate, provisionTransaction")
                 except SoftLayer.SoftLayerAPIError as e:
                    print("Error: %s, %s" % (e.faultCode, e.faultString))
                    time.sleep(5)
@@ -146,16 +156,49 @@ for invoice in InvoiceList:
                 provisionTransaction = billingInvoiceItem['provisionTransaction']
                 provisionId = provisionTransaction['id']
                 guestId = provisionTransaction['guestId']
-                provisionDate = convert_timestamp(provisionTransaction['modifyDate'])
+                provisionDateStamp = convert_timestamp(provisionTransaction['modifyDate'])
             else:
                 provisionTransaction = "0"
                 provisionId = "0"
                 guestId = "0"
-                provisionDate = convert_timestamp(item['createDate'])
+                provisionDateStamp = convert_timestamp(item['createDate'])
 
-            eventdate = provisionDate
-            powerOnDate = provisionDate
+            # determine cancelation date of VSI to calculate total hours; otherwise assume still running
+            if 'cancellationDate' in billingInvoiceItem:
+                if billingInvoiceItem['cancellationDate'] != "":
+                    cancellationDateStamp=convert_timestamp(billingInvoiceItem['cancellationDate'])
+            else:
+                cancellationDateStamp="Running"
 
+            # If still running use current timestamp to calculate hoursUsed otherwise use cancellation date.
+
+            if cancellationDateStamp == "Running":
+                    currentDateStamp=datetime.datetime.now()
+                    hoursUsed=math.ceil(convert_timedelta(currentDateStamp-provisionDateStamp)/60)
+            else:
+                    hoursUsed=math.ceil(convert_timedelta(cancellationDateStamp-provisionDateStamp)/60)
+
+            # Calculate Credit if hoursUsed greater than credit offer otherwise credit actual hours
+            if hoursUsed >= vsicredit:
+                   actualCreditHours = vsicredit
+            else:
+                   actualCreditHours = hoursUsed
+
+            # CALCULATE HOURLY CHARGE INCLUDING ASSOCIATED CHILDREN
+            if 'hourlyRecurringFee' in item:
+                hourlyRecurringFee = round(float(item['hourlyRecurringFee']),3)
+                creditAmount = round(float(item['hourlyRecurringFee']) * actualCreditHours,2)
+            else:
+                hourlyRecurringFee = 0
+                creditAmount = 0
+
+            for child in billing_detail:
+                 hourlyRecurringFee = round(hourlyRecurringFee + float(child['hourlyRecurringFee']),3)
+                 creditAmount = round(creditAmount + round(float(child['hourlyRecurringFee']) * actualCreditHours,2),2)
+
+            # Search for oldest powerOn event in Event Log
+            eventdate = provisionDateStamp
+            powerOnDateStamp = provisionDateStamp
             found=0
 
             # GET OLDEST POWERON EVENT FROM EVENTLOG FOR GUESTID AS INITIAL RESOURCE ALLOCATION TIMESTAMP
@@ -167,34 +210,38 @@ for invoice in InvoiceList:
                     eventdate = event["eventCreateDate"]
                     eventdate = eventdate[0:29]+eventdate[-2:]
                     eventdate = datetime.strptime(eventdate, "%Y-%m-%dT%H:%M:%S.%f%z")
-                    if eventdate<powerOnDate:
-                        powerOnDate = eventdate
+                    if eventdate<powerOnDateStamp:
+                        powerOnDateStamp = eventdate
                         found=1
 
+            # FORMAT DATE & TIME STAMPS AND DELTAS FOR CSV
+            createDate=datetime.strftime(createDateStamp,"%Y-%m-%d")
+            createTime=datetime.strftime(createDateStamp,"%H:%M:%S")
+            provisionDate=datetime.strftime(provisionDateStamp,"%Y-%m-%d")
+            provisionTime=datetime.strftime(provisionDateStamp,"%H:%M:%S")
+            provisionDelta=convert_timedelta(provisionDateStamp-createDateStamp)
+
+            # Calculate poweron if found
             if found==1:
-                row = {'InvoiceID': invoiceID,
-                   'ID': guestId,
-                   'Datacenter': location,
-                   'Product': product,
-                   'Cores': cores,
-                   'OS': os,
-                   'Memory': memory,
-                   'Disk': disk,
-                   'Hostname': hostName,
-                   'CreateDate': datetime.strftime(createDate,"%Y-%m-%d"),
-                   'CreateTime': datetime.strftime(createDate,"%H:%M:%S"),
-                   'PowerOnDate': datetime.strftime(powerOnDate,"%Y-%m-%d"),
-                   'PowerOnTime': datetime.strftime(powerOnDate,"%H:%M:%S"),
-                   'PowerOnDelta': convert_timedelta(powerOnDate-createDate),
-                   'ProvisionedDate': datetime.strftime(provisionDate,"%Y-%m-%d"),
-                   'ProvisionedTime': datetime.strftime(provisionDate,"%H:%M:%S"),
-                   'ProvisionedDelta': convert_timedelta(provisionDate-createDate)
-                   }
-                print(json.dumps(row))
-                csvwriter.writerow(row)
+                powerOnDate=datetime.strftime(powerOnDateStamp,"%Y-%m-%d")
+                powerOnTime=datetime.strftime(powerOnDateStamp,"%H:%M:%S")
+                powerOnDelta=convert_timedelta(powerOnDateStamp-createDateStamp)
             else:
-                row = {'InvoiceID': invoiceID,
-                   'ID': guestId,
+                powerOnDate="Not Found"
+                powerOnTime="Not Found"
+                powerOnDelta=0
+
+            if cancellationDateStamp=="Running":
+                cancellationDate="Running"
+                cancellationTime="Running"
+            else:
+                cancellationDate=datetime.strftime(cancellationDateStamp,"%Y-%m-%d")
+                cancellationTime=datetime.strftime(cancellationDateStamp,"%H:%M:%S")
+
+            # Create CSV Record
+            row = {'InvoiceID': invoiceID,
+                   'BillingItemId': billingItemId,
+                   'TransactionID': guestId,
                    'Datacenter': location,
                    'Product': product,
                    'Cores': cores,
@@ -202,16 +249,24 @@ for invoice in InvoiceList:
                    'Memory': memory,
                    'Disk': disk,
                    'Hostname': hostName,
-                   'CreateDate': datetime.strftime(createDate,"%Y-%m-%d"),
-                   'CreateTime': datetime.strftime(createDate,"%H:%M:%S"),
-                   'PowerOnDate': 'Not Available',
-                   'PowerOnTime': 'Not Available',
-                   'PowerOnDelta': '0',
-                   'ProvisionedDate': datetime.strftime(provisionDate,"%Y-%m-%d"),
-                   'ProvisionedTime': datetime.strftime(provisionDate,"%H:%M:%S"),
-                   'ProvisionedDelta': convert_timedelta(provisionDate-createDate)
+                   'CreateDate': createDate,
+                   'CreateTime': createTime,
+                   'PowerOnDate': powerOnDate,
+                   'PowerOnTime': powerOnTime,
+                   'PowerOnDelta': powerOnDelta,
+                   'ProvisionedDate': provisionDate,
+                   'ProvisionedTime': provisionTime,
+                   'ProvisionedDelta': provisionDelta,
+                   'CancellationDate': cancellationDate,
+                   'CancellationTime': cancellationTime,
+                   'HoursUsed': hoursUsed,
+                   'HourlyRecurringFee': hourlyRecurringFee,
+                   'CreditHours': vsicredit,
+                   'ActualCreditHours': actualCreditHours,
+                   'CreditAmount': creditAmount
                    }
-                print(json.dumps(row))
-                csvwriter.writerow(row)
+            #print (row)
+            csvwriter.writerow(row)
+
 ##close CSV File
 outfile.close()
