@@ -36,13 +36,13 @@ else:
     datacenter=args.datacenter
 
 
-virtualServers = client['Account'].getVirtualGuests(mask='id,hostname,datacenter.name,powerState',
+virtualServers = client['Account'].getVirtualGuests(mask='id,fullyQualifiedDomainName,datacenter.name,powerState',
                                 filter={'virtualGuests': {'datacenter': {'name': {'operation': datacenter}}}})
 
-print ('{:<10} {:<20} {:<15}'.format("ID", "Hostname", "PowerState"))
-print ('{:<10} {:<20} {:<15}'.format("==========", "================", "================="))
+print ('{:<10} {:<40} {:<15}'.format("ID        ", "fullyQualifiedDomainName", "PowerState"))
+print ('{:<10} {:<40} {:<15}'.format("==========", "========================", "=========="))
 
 for server in virtualServers:
-    print("{:<10} {:<20} {:<15}".format(server['id'], server['hostname'], server['powerState']['name']))
+    print("{:<10} {:<40} {:<15}".format(server['id'], server['fullyQualifiedDomainName'], server['powerState']['name']))
 
 

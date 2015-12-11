@@ -18,7 +18,7 @@ def initializeSoftLayerAPI(user, key, configfile):
 
 
 ## READ CommandLine Arguments and load configuration file
-parser = argparse.ArgumentParser(description="PowerOffVirtualServers given a list of hostnames.")
+parser = argparse.ArgumentParser(description="PowerOffVirtualServers given a list of VSI ID's or fullyQualifiedDomainNames.")
 parser.add_argument("-u", "--username", help="SoftLayer API Username")
 parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
 parser.add_argument("-c", "--config", help="config.ini file to load")
@@ -35,20 +35,20 @@ else:
 
 
 ## READ CSV FILE INTO PYTHON DICTIONARY
-## FIELDS REQUIRED: ID, HOSTNAME, WAIT
-## ID = VM ID (found via SLCLI VS LIST) Leave empty to have script lookup by hostname
-## HOSTNAME = SL Hostname (must be unique if you don't specify VM ID)
+## FIELDS REQUIRED: ID, fullyQualifiedDomainName, WAIT
+## ID = VM ID (found via SLCLI VS LIST) Leave empty to have script lookup by fullyQualifiedDomainName
+## fullyQualifiedDomainName = SL fullyQualifiedDomainName (must be unique if you don't specify VM ID)
 ## WAIT = # of second to wait after powering on VM before moving to next VM
 ## Example csv file
-## Order,id,hostname,wait
-## 1,13405579,centos02,60
-## 2,13405577,centos01,30
-## 3,13405581,centos03,30
+## Order,id,fullyQualifiedDomainName,wait
+## 1,13405579,centos02.ibmsldemo.com,60
+## 2,13405577,centos0.ibmsldemo.com,30
+## 3,13405581,centos03.ibmsldemo.com,30
 
 
 ## READ ACCOUNT LIST OF VIRTUAL GUESTS IN CASE ID ISN'T SPECIFIED
 try:
-    virtualGuests = client['Account'].getVirtualGuests(mask="id,hostname,powerState.keyName")
+    virtualGuests = client['Account'].getVirtualGuests(mask="id,fullyQualifiedDomainName,powerState.keyName")
 except SoftLayer.SoftLayerAPIError as e:
     print("Error: %s, %s" % (e.faultCode, e.faultString))
     quit()
@@ -57,18 +57,17 @@ except SoftLayer.SoftLayerAPIError as e:
 with open(filename, 'r') as csvfile:
     serverlist = csv.DictReader(csvfile, delimiter=',', quotechar='"')
     for server in serverlist:
-        # IF ID isn't specified lookup ID by hostname
-        print (server['id'])
+        # IF ID isn't specified lookup ID by fullyQualifiedDomainName
         if server['id']=="":
             #Lookup ID
             for virtualGuest in virtualGuests:
-                if server['hostname']==virtualGuest['hostname']:
+                if server['fullyQualifiedDomainName']==virtualGuest['fullyQualifiedDomainName']:
                     vsiid=virtualGuest['id']
         else:
             vsiid=server['id']
 
         ## POWER OFF SERVERS SPECIFIED IN CSV FILE
-        print ("Powering off server %s (%s)" % (server['hostname'],vsiid))
+        print ("Powering off server %s (%s)" % (server['fullyQualifiedDomainName'],vsiid))
 
         try:
             poweroff = client['Virtual_Guest'].powerOffsoft(id=vsiid)

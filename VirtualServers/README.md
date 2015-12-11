@@ -25,16 +25,16 @@ script.py -i filename.csv
 Field | Required |Field Description
 ----- | -------- |-----------------
 Order | Optional |field for tracking or sorting.  Not used by script
-ID    | Optional |VSI ID (found via SLCLI VS LIST). If specified it will used instead of hostName (prefered). 
-HOSTNAME|Required|SL Hostname. Must be unique if you don't specify the correct VSI ID.  Script will it look up.
+ID    | Optional |VSI ID (found via SLCLI VS LIST). If specified it will used instead of fullyQualifiedDomainName which may not be unique in SL (prefered). 
+fullyQualifiedDomainName|Required|SL fullyQualifiedDomainName. Must be unique if you don't specify the correct VSI ID.  Script will it look up.
 WAIT  | Required |Number of seconds to wait after powering on or off VM before moving to next VSI
 
 Example CSV file
 ```
-Order,id,hostname,wait
-1,13405579,centos02,60
-2,13405577,centos01,30
-3,13405581,centos03,30
+Order,id,fullyQualifiedDomainName,wait
+1,13405579,centos02.ibmsldemo.com,60
+2,13405577,centos01.ibmsldemo.com,30
+3,13405581,centos03.ibmsldemo.com,30
 ```
 The *ShowVirtualServerPowerState.py* script can be used to verify status after running script.  This script does not
 require input and instead lists all VSI's in a Datacenter.
