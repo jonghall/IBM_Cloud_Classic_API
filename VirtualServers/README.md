@@ -4,9 +4,9 @@
 Script | Description
 ------ | -----------
 
-PowerOffVirtualServers.py| Soft Shutdown, then power off virtual servers listed in order contained in CSV file
-PowerOnVirtualServers.py| Power on virtual server in controlled fasion listed in order contained in CSV file
-ShowVirtualServerPowerState.py| Show power state for all Virtual Server in specified datacenter
+*PowerOffVirtualServers.py*| Soft Shutdown, then power off virtual servers listed in order contained in CSV file
+*PowerOnVirtualServers.py*| Power on virtual server in controlled fasion listed in order contained in CSV file
+*ShowVirtualServerPowerState.py*| Show power state for all Virtual Server in specified datacenter
 
 Scripts Read CSV file of VirtualServers to powerOn or PowerOff
 
