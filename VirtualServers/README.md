@@ -9,15 +9,14 @@ ShowVirtualServerPowerState.py| Show power state for all Virtual Server in speci
 DeprovisionVirtualServer.py| Deprovision a virtual server
 ProvisionVirtualServer.py| Provision a virtual server
 
-CSV File Details for PowerOffVirtualServers and PowerOnVirtualServers
---------------------------------------------------------------------
+=CSV File Details for PowerOffVirtualServers and PowerOnVirtualServers=
 
 Field | Required |Field Description
 ----- | -------- |-----------------
 Order | Optional |field for tracking or sorting.  Not used by script
 ID    | Optional |VSI ID (found via SLCLI VS LIST). If specified it will used instead of hostName (prefered). 
 HOSTNAME|Required|SL Hostname. Must be unique if you don't specify the correct VSI ID.  Script will it look up.
-WAIT  | Required |Number of second to wait after powering on or off VM before moving to next VM
+WAIT  | Required |Number of seconds to wait after powering on or off VM before moving to next VSI
 
 Example csv file
 ```
