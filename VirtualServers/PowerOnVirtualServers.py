@@ -2,7 +2,6 @@ __author__ = 'jonhall'
 ## POWERON VIRtUALGUESTS
 
 import sys, getopt, socket, SoftLayer, json, string, configparser, os, argparse,csv, time
-import pandas as pd
 
 def initializeSoftLayerAPI(user, key, configfile):
     if user == None and key == None:
@@ -14,7 +13,6 @@ def initializeSoftLayerAPI(user, key, configfile):
         config.read(filename)
         client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'])
     else:
-        #client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'],endpoint_url=SoftLayer.API_PRIVATE_ENDPOINT)
         client = SoftLayer.Client(username=user, api_key=key)
     return client
 
