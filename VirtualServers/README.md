@@ -9,13 +9,15 @@ ShowVirtualServerPowerState.py| Show power state for all Virtual Server in speci
 DeprovisionVirtualServer.py| Deprovision a virtual server
 ProvisionVirtualServer.py| Provision a virtual server
 
-The PowerOffVirtualServers scripts can be used to systematically power off VSI's after a OS 
-soft shutdown and leaves the VSI permenently in the poweroff state in preparation for a SoftLayer maintenance window. 
-The PowerOnVirtualServers script can be used to systematically power on VSI's after a SoftLayer maintenance window.
+The *PowerOffVirtualServers.py* script can be used to systematically power off VSI's after an OS soft shutdown 
+is completed and leaves the VSI permenently in the poweroff state in preparation for a SoftLayer maintenance window. 
+The *PowerOnVirtualServers.py* script can be used to systematically power on VSI's after a SoftLayer maintenance window.
 
-Both scripts require a CSV file with a list of VSI's be specified.   CSV can be passed as a paramenter using the
- *-i filename.csv* command line parameter.
-
+Both scripts require a CSV file with the list of VSI's to be powered on or off and their order.   The CSV filename
+can be passed as a paramenter using the follwing command line parameter
+```
+script.py -i filename.csv
+```
 *CSV Requirements*
 
 Field | Required |Field Description
