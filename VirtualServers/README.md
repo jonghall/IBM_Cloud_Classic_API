@@ -10,12 +10,14 @@ DeprovisionVirtualServer.py| Deprovision a virtual server
 ProvisionVirtualServer.py| Provision a virtual server
 
 Scripts Read CSV file of VirtualServers to powerOn or PowerOff
-===============================================================
+
 FIELDS REQUIRED: ID, HOSTNAME, WAIT
 
-ID = VM ID (found via SLCLI VS LIST). If specified used instead of hostBName. Leave empty to have script lookup ID by hostname
-HOSTNAME = SL Hostname. Must be unique if you don't specify the VM ID.  Script will look up.
-WAIT = # of second to wait after powering on or off VM before moving to next VM
+Field | Description
+-----   -----------
+ID | VSI ID (found via SLCLI VS LIST). If specified it will used instead of hostName (prefered). 
+HOSTNAME | SL Hostname. Must be unique if you don't specify the correct VSI ID.  Script will it look up.
+WAIT | # of second to wait after powering on or off VM before moving to next VM
 
 Example csv file
 ```
