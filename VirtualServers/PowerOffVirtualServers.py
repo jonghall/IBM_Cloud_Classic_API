@@ -12,7 +12,7 @@ def initializeSoftLayerAPI(user, key, configfile):
             filename="config.ini"
         config = configparser.ConfigParser()
         config.read(filename)
-        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'],endpoint_url=SoftLayer.API_PRIVATE_ENDPOINT)
+        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'])
     else:
         #client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'],endpoint_url=SoftLayer.API_PRIVATE_ENDPOINT)
         client = SoftLayer.Client(username=user, api_key=key)
@@ -48,17 +48,17 @@ else:
 ## 3,13405581,  centos03 ,30
 
 
-## READ ACCOUNT LIST OF VIRTUAL GUESTS
+## READ ACCOUNT LIST OF VIRTUAL GUESTS IN CASE ID ISN'T SPECIFIED
 try:
     virtualGuests = client['Account'].getVirtualGuests(mask="id,hostname,powerState.keyName")
 except SoftLayer.SoftLayerAPIError as e:
     print("Error: %s, %s" % (e.faultCode, e.faultString))
 
-## OPEN CSV FILE TO READ LIST OF SERVERS
+## OPEN CSV FILE TO READ LIST OF SERVERS TO SHUTDOWN
 with open(filename, 'r') as csvfile:
     serverlist = csv.DictReader(csvfile, delimiter=',', quotechar='"')
     for server in serverlist:
-        # IF ID isn't specify lookup hostname
+        # IF ID isn't specified lookup ID by hostname
         print (server['id'])
         if server['id']=="":
             #Lookup ID
@@ -68,7 +68,7 @@ with open(filename, 'r') as csvfile:
         else:
             vsiid=server['id']
 
-        ## POWER OFF SERVERS IN ORDER OF CSV FILE
+        ## POWER OFF SERVERS SPECIFIED IN CSV FILE
         print ("Powering off server %s (%s)" % (server['hostname'],vsiid))
 
         try:
@@ -76,7 +76,7 @@ with open(filename, 'r') as csvfile:
         except SoftLayer.SoftLayerAPIError as e:
                 print("Error: %s, %s" % (e.faultCode, e.faultString))
 
-        ## WAIT FOR PERIOD SPECIFIED
+        ## WAIT FOR PERIOD SPECIFIED BEFORE PROCEEDING
         print ("Sleeping for %s seconds" % server['wait'])
         time.sleep(float(server['wait']))
 
