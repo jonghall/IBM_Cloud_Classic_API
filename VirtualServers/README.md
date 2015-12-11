@@ -3,13 +3,14 @@
 
 Script | Description
 ------ | -----------
-
-*PowerOffVirtualServers.py*| Soft Shutdown, then power off virtual servers listed in order contained in CSV file
-*PowerOnVirtualServers.py*| Power on virtual server in controlled fasion listed in order contained in CSV file
-*ShowVirtualServerPowerState.py*| Show power state for all Virtual Server in specified datacenter
+PowerOffVirtualServers.py| Soft Shutdown, then power off virtual servers listed in order contained in CSV file
+PowerOnVirtualServers.py| Power on virtual server in controlled fasion listed in order contained in CSV file
+ShowVirtualServerPowerState.py| Show power state for all Virtual Server in specified datacenter
+DeprovisionVirtualServer.py| Deprovision a virtual server
+ProvisionVirtualServer.py| Provision a virtual server
 
 Scripts Read CSV file of VirtualServers to powerOn or PowerOff
-
+===============================================================
 FIELDS REQUIRED: ID, HOSTNAME, WAIT
 
 ID = VM ID (found via SLCLI VS LIST). If specified used instead of hostBName. Leave empty to have script lookup ID by hostname
