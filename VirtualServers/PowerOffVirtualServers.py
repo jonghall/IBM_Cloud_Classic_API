@@ -43,9 +43,9 @@ else:
 ## WAIT = # of second to wait after powering on VM before moving to next VM
 ## Example csv file
 ## Order,id,hostname,wait
-## 1,13405579,  centos02 ,60
-## 2,13405577,  centos01 ,30
-## 3,13405581,  centos03 ,30
+## 1,13405579,centos02,60
+## 2,13405577,centos01,30
+## 3,13405581,centos03,30
 
 
 ## READ ACCOUNT LIST OF VIRTUAL GUESTS IN CASE ID ISN'T SPECIFIED
