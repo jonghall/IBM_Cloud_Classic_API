@@ -46,7 +46,7 @@ else:
 ## 2,13405577,  centos01 ,30
 ## 3,13405581,  centos03 ,30
 
-## READ ACCOUNT LIST OF VIRTUAL GUESTS
+## READ ACCOUNT LIST OF VIRTUAL GUESTS IN CASE ID ISN'T SPECIFIED
 try:
     virtualGuests = client['Account'].getVirtualGuests(mask="id,hostname,powerState.keyName")
 except SoftLayer.SoftLayerAPIError as e:
@@ -56,7 +56,7 @@ except SoftLayer.SoftLayerAPIError as e:
 with open(filename, 'r') as csvfile:
     serverlist = csv.DictReader(csvfile, delimiter=',', quotechar='"')
     for server in serverlist:
-        # IF ID isn't specify lookup hostname
+        # IF ID isn't specified lookup hostname
         print (server['id'])
         if server['id']=="":
             #Lookup ID
@@ -66,7 +66,7 @@ with open(filename, 'r') as csvfile:
         else:
             vsiid=server['id']
 
-        ## POWER OFF SERVERS IN ORDER OF CSV FILE
+        ## POWER ON SERVERS IN ORDER OF CSV FILE
         print ("Powering on server %s (%s)" % (server['hostname'],vsiid))
 
         try:
@@ -74,7 +74,7 @@ with open(filename, 'r') as csvfile:
         except SoftLayer.SoftLayerAPIError as e:
             print("Error: %s, %s" % (e.faultCode, e.faultString))
 
-        ## WAIT FOR PERIOD SPECIFIED
+        ## WAIT FOR PERIOD SPECIFIED BEFORE NEXT VM
         print ("Sleeping for %s seconds" % server['wait'])
         time.sleep(float(server['wait']))
 
