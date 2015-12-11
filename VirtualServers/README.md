@@ -9,9 +9,8 @@ ShowVirtualServerPowerState.py| Show power state for all Virtual Server in speci
 DeprovisionVirtualServer.py| Deprovision a virtual server
 ProvisionVirtualServer.py| Provision a virtual server
 
-Scripts Read CSV file of VirtualServers to powerOn or PowerOff
-
-FIELDS REQUIRED: ID, HOSTNAME, WAIT
+CSV File Details for PowerOffVirtualServers and PowerOnVirtualServers
+--------------------------------------------------------------------
 
 Field | Required |Field Description
 ----- | -------- |-----------------
@@ -27,6 +26,8 @@ Order,id,hostname,wait
 2,13405577,centos01,30
 3,13405581,centos03,30
 ```
+ShowVirtualServerPowerState.py can be used to verify status after running script.
+
 
 **Installation of SL API**
 
