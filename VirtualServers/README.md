@@ -13,8 +13,8 @@ Scripts Read CSV file of VirtualServers to powerOn or PowerOff
 
 FIELDS REQUIRED: ID, HOSTNAME, WAIT
 
-Field | Description
------   -----------
+Field | Field Description
+----- | -----------
 Order | Optional field for tracking or sorting.  Not used by script
 ID | VSI ID (found via SLCLI VS LIST). If specified it will used instead of hostName (prefered). 
 HOSTNAME | SL Hostname. Must be unique if you don't specify the correct VSI ID.  Script will it look up.
