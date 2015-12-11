@@ -53,6 +53,7 @@ try:
     virtualGuests = client['Account'].getVirtualGuests(mask="id,hostname,powerState.keyName")
 except SoftLayer.SoftLayerAPIError as e:
     print("Error: %s, %s" % (e.faultCode, e.faultString))
+    quit()
 
 ## OPEN CSV FILE TO READ LIST OF SERVERS TO SHUTDOWN
 with open(filename, 'r') as csvfile:
@@ -74,7 +75,7 @@ with open(filename, 'r') as csvfile:
         try:
             poweroff = client['Virtual_Guest'].powerOffsoft(id=vsiid)
         except SoftLayer.SoftLayerAPIError as e:
-                print("Error: %s, %s" % (e.faultCode, e.faultString))
+            print("Error: %s, %s" % (e.faultCode, e.faultString))
 
         ## WAIT FOR PERIOD SPECIFIED BEFORE PROCEEDING
         print ("Sleeping for %s seconds" % server['wait'])
