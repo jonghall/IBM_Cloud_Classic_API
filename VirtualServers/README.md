@@ -9,7 +9,14 @@ ShowVirtualServerPowerState.py| Show power state for all Virtual Server in speci
 DeprovisionVirtualServer.py| Deprovision a virtual server
 ProvisionVirtualServer.py| Provision a virtual server
 
-=CSV File Details for PowerOffVirtualServers and PowerOnVirtualServers=
+The PowerOffVirtualServers scripts can be used to systematically power off VSI's after a OS 
+soft shutdown and leaves the VSI permenently in the poweroff state in preparation for a SoftLayer maintenance window. 
+The PowerOnVirtualServers script can be used to systematically power on VSI's after a SoftLayer maintenance window.
+
+Both scripts require a CSV file with a list of VSI's be specified.   CSV can be passed as a paramenter using the
+ *-i filename.csv* command line parameter.
+
+*CSV Requirements*
 
 Field | Required |Field Description
 ----- | -------- |-----------------
@@ -18,7 +25,7 @@ ID    | Optional |VSI ID (found via SLCLI VS LIST). If specified it will used in
 HOSTNAME|Required|SL Hostname. Must be unique if you don't specify the correct VSI ID.  Script will it look up.
 WAIT  | Required |Number of seconds to wait after powering on or off VM before moving to next VSI
 
-Example csv file
+Example CSV file
 ```
 Order,id,hostname,wait
 1,13405579,centos02,60
