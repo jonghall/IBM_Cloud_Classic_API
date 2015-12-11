@@ -6,22 +6,26 @@ Script | Description
 PowerOffVirtualServers.py| Soft Shutdown, then power off virtual servers listed in order contained in CSV file
 PowerOnVirtualServers.py| Power on virtual server in controlled fasion listed in order contained in CSV file
 ShowVirtualServerPowerState.py| Show power state for all Virtual Server in specified datacenter
-DeprovisionVirtualServer.py| Deprovision a virtual server
-ProvisionVirtualServer.py| Provision a virtual server
+BuildServerListbyDC.py| Build CSV list from currently running servers in specified datacenter
 
 The *PowerOffVirtualServers.py* script can be used to systematically power off VSI's after an OS soft shutdown 
 is completed and leaves the VSI permenently in the poweroff state in preparation for a SoftLayer maintenance window. 
 The *PowerOnVirtualServers.py* script can be used to systematically power on VSI's after a SoftLayer maintenance window.
 
 Both scripts require a CSV file with the list of VSI's to be powered on or off and their order.   The CSV filename
-can be passed as a paramenter using the follwing command line parameter
-
+can be passed as a paramenter using the follwing:
 ```
-script.py -i filename.csv
+python script.py --input=filename.csv
+```
+
+To build CSV file automatically  use *BuildServerListbyDC.py*.   Script will build a sequential list of servers with correct VSI ID numbers.  CSV file can then be modified
+to change order of servers to be PowerOn and PowerOff.    Wait times are set to 0 by default, but should be modified to suit your needs particularily for the PowerOn script.
+To filter by a specfic datacenter specify *--datecenter=*.
+```
+python BuildServerListbyDC.py --datecenter=dal09 --output=serverlist.csv
 ```
 
 *CSV Requirements*
-
 Field | Required |Field Description
 ----- | -------- |-----------------
 Order | Optional |field for tracking or sorting.  Not used by script
@@ -36,7 +40,8 @@ Order,id,fullyQualifiedDomainName,wait
 2,13405577,centos01.ibmsldemo.com,30
 3,13405581,centos03.ibmsldemo.com,30
 ```
-The *ShowVirtualServerPowerState.py* script can be used to verify status after running script.  This script does not
+
+The *ShowVirtualServerPowerState.py* script can be used to verify status after running scripts.  This script does not
 require input and instead lists all VSI's in a Datacenter.
 
 
