@@ -1,5 +1,11 @@
 **Jon-SL-scripts/VirtualServers**
 ==============
+The following collection of scripts can be used to systematically power off SoftLayer Virtual Servers in
+preparation for site maintenance.   The *PowerOffVirtualServers.py* script executes an OS soft shutdown, then 
+when completed, powers off the VSI, leaving it permenently in the poweroff state in preparation for the maintenance
+window. The *PowerOnVirtualServers.py* script can then be used to systematically power back on the VSI's after
+the maintenance window is complete.
+
 
 Script | Description
 ------ | -----------
@@ -8,18 +14,18 @@ PowerOnVirtualServers.py| Power on virtual server in controlled fasion listed in
 ShowVirtualServerPowerState.py| Show power state for all Virtual Server in specified datacenter
 BuildServerListbyDC.py| Build CSV list from currently running servers in specified datacenter
 
-The *PowerOffVirtualServers.py* script can be used to systematically power off VSI's after an OS soft shutdown 
-is completed and leaves the VSI permenently in the poweroff state in preparation for a SoftLayer maintenance window. 
-The *PowerOnVirtualServers.py* script can be used to systematically power on VSI's after a SoftLayer maintenance window.
 
-Both scripts require a CSV file with the list of VSI's to be powered on or off and their order.   The CSV filename
-can be passed as a paramenter using the follwing:
+Both scripts require a CSV input file with the list of VSI's to be powered on or off,  their order and any required
+wait time between servers.   The CSV filename should be passed as a paramenter using the follwing format:
 ```
 python PowerOffVirtualServers --input=filename.csv
 ```
 
-To build CSV file automatically  use *BuildServerListbyDC.py*.   Script will build a sequential list of servers with correct VSI ID numbers.  CSV file can then be modified
-to change order of servers to be PowerOn and PowerOff.    Wait times are set to 0 by default, but should be modified to suit your needs particularily for the PowerOn script.
+To build a CSV for a maintenance window automatically use the *BuildServerListbyDC.py* script.  This script will build
+a sequential list of servers with correct VSI ID numbers.  CSV file can then be modified to change order of servers to
+be included.  Wait times between servers are set to 0 by default, but should be modified to suit your needs
+particularily for the *PowerOnVirtualServers.py* script.  
+
 To filter by a specfic datacenter specify the *--datecenter=* parameter.
 ```
 python BuildServerListbyDC.py --datecenter=dal09 --output=serverlist.csv
@@ -42,8 +48,8 @@ Order,id,fullyQualifiedDomainName,wait
 3,13405581,centos03.ibmsldemo.com,30
 ```
 
-The *ShowVirtualServerPowerState.py* script can be used to verify status after running scripts.  This script does not
-require input and instead lists all VSI's in a Datacenter.
+The *ShowVirtualServerPowerState.py* script should be used to verify status after running scripts.  This script does not
+require input and instead lists all VSI's and their power status in a Datacenter. 
 
 
 **Installation of SL API**
