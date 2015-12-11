@@ -7,69 +7,64 @@ __author__ = 'jonhall'
 
 import sys, getopt, socket, SoftLayer, json, string, configparser, os, argparse, csv
 
-def initializeSoftLayerAPI():
-    ## READ CommandLine Arguments and load configuration file
-    parser = argparse.ArgumentParser(description="Print a report of Recurring invoices sorted by Hourly vs Monthly between Start and End date.")
-    parser.add_argument("-u", "--username", help="SoftLayer API Username")
-    parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
-    parser.add_argument("-c", "--config", help="config.ini file to load")
-
-    args = parser.parse_args()
-
-    if args.config != None:
-        filename=args.config
-    else:
-        filename="config.ini"
-
-    if (os.path.isfile(filename) is True) and (args.username == None and args.apikey == None):
-        ## Read APIKEY from configuration file
+def initializeSoftLayerAPI(user, key, configfile):
+    if user == None and key == None:
+        if configfile != None:
+            filename=args.config
+        else:
+            filename="config.ini"
         config = configparser.ConfigParser()
         config.read(filename)
-        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'])
+        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'],endpoint_url=SoftLayer.API_PRIVATE_ENDPOINT,timeout=240)
     else:
-        ## Read APIKEY from commandline arguments
-        if args.username == None and args.apikey == None:
-            print ("You must specify a username and APIkey to use.")
-            quit()
-        if args.username == None:
-            print ("You must specify a username with your APIKEY.")
-            quit()
-        if args.apikey == None:
-            print("You must specify a APIKEY with the username.")
-            quit()
-        client = SoftLayer.Client(username=args.username, api_key=args.apikey)
+        client = SoftLayer.Client(username=user, api_key=key)
     return client
 
 
-#
-# Get APIKEY from config.ini & initialize SoftLayer API
-#
+## READ CommandLine Arguments and load configuration file
+parser = argparse.ArgumentParser(description="Print a report of Recurring invoices sorted by Hourly vs Monthly between Start and End date.")
+parser.add_argument("-u", "--username", help="SoftLayer API Username")
+parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
+parser.add_argument("-c", "--config", help="config.ini file to load")
+parser.add_argument("-s", "--startdate", help="start date mm/dd/yy")
+parser.add_argument("-e", "--enddate", help="End date mm/dd/yyyy")
+parser.add_argument("-o", "--output", help="Outputfile")
 
-client = initializeSoftLayerAPI()
+args = parser.parse_args()
 
+client = initializeSoftLayerAPI(args.username, args.apikey, args.config)
+
+if args.startdate == None:
+    startdate=input("Report Start Date (MM/DD/YYYY): ")
+else:
+    startdate=args.startdate
+
+if args.enddate == None:
+    enddate=input("Report End Date (MM/DD/YYYY): ")
+else:
+    enddate=args.enddate
+
+if args.output == None:
+    outputname=input("Output filename: ")
+else:
+    outputname=args.output
 
 
 #
 # GET LIST OF INVOICES
 #
-print ()
 
-startdate=input("Report Start Date (MM/DD/YYYY): ")
-enddate=input("Report End Date (MM/DD/YYYY): ")
-vsicredit=float(input("VSI Hours to Credit per VSI (x): "))
-outputname=input("CSV Filename: ")
 
 outfile = open(outputname, 'w')
 csvwriter = csv.writer(outfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
 
 
-fieldnames = ['Invoice_Date', 'Invoice_Number', 'InstanceType', 'hostName', 'Category', 'Description',
-             'Hours', 'Hourly_Rate', 'RecurringCharge', "Credit", 'InvoiceTotal', 'InvoiceRecurring', 'Type']
+fieldnames = ['Invoice_Date', 'Invoice_Number', 'BillingItemId', 'InstanceType', 'hostName', 'Category', 'Description',
+             'Hours', 'Hourly_Rate', 'RecurringCharge', 'InvoiceTotal', 'InvoiceRecurring', 'Type']
 csvwriter = csv.DictWriter(outfile, delimiter=',', fieldnames=fieldnames)
 csvwriter.writerow(dict((fn, fn) for fn in fieldnames))
 
 ## OPEN CSV FILE FOR OUTPUT
-
 
 print()
 print("Looking up invoices....")
@@ -102,14 +97,16 @@ for invoice in InvoiceList:
     invoiceID = invoice['id']
     Billing_Invoice = client['Billing_Invoice'].getObject(id=invoiceID, mask="invoiceTopLevelItemCount,invoiceTopLevelItems,invoiceTotalAmount,invoiceTotalRecurringAmount")
     if Billing_Invoice['invoiceTotalAmount'] > "0":
+        invoiceTotalAmount=float(Billing_Invoice['invoiceTotalAmount'])
+        invoiceTotalRecurringAmount=float(Billing_Invoice['invoiceTotalRecurringAmount'])
+        invoiceType=Billing_Invoice['typeCode']
         count=0
         # PRINT INVOICE SUMMARY LINE
-        print ('{:35} {:<30} {:>8} {:>16} {:>16,.2f} {:>16,.2f} {:<15}'.format(Billing_Invoice['createDate'][0:10], Billing_Invoice['id'], " ", " ", float(Billing_Invoice['invoiceTotalAmount']), float(Billing_Invoice['invoiceTotalRecurringAmount']), Billing_Invoice['typeCode']))
-
+        print ('{:35} {:<30} {:>8} {:>16} {:>16,.2f} {:>16,.2f} {:<15}'.format(Billing_Invoice['createDate'][0:10], Billing_Invoice['id'], " ", " ", invoiceTotalAmount, invoiceTotalRecurringAmount, invoiceType))
         # ITERATE THROUGH DETAIL
         for item in Billing_Invoice['invoiceTopLevelItems']:
-            credit = 0
             count=count + 1
+            billingItemId = item['billingItemId']
             print ("%s of %s" % (count, Billing_Invoice['invoiceTopLevelItemCount']), end='\r')
             category = item["categoryCode"]
 
@@ -118,26 +115,29 @@ for invoice in InvoiceList:
             else:
                 hostName = "Unnamed Device"
 
+            recurringFee = float(client['Billing_Invoice_Item'].getTotalRecurringAmount(id=item['id']))
+
+            #IF Monthly calculate hourly rate and total hours
             if 'hourlyRecurringFee' in item:
                 instanceType = "Hourly"
-                recurringFee = float(client['Billing_Invoice_Item'].getTotalRecurringAmount(id=item['id']))
                 associated_children = client['Billing_Invoice_Item'].getNonZeroAssociatedChildren(id=item['id'],mask="hourlyRecurringFee")
+                #calculate total hourlyRecurringFree from associated childrent
                 hourlyRecurringFee = float(item['hourlyRecurringFee']) + sum(float(child['hourlyRecurringFee']) for child in associated_children)
-                hours = round(float(item['recurringFee']) / hourlyRecurringFee)
-                if hours > vsicredit:
-                   credit = vsicredit * hourlyRecurringFee
+                if hourlyRecurringFee > 0:
+                    hours = round(float(recurringFee) / hourlyRecurringFee)
+                else:
+                    hours=0
             else:
                 instanceType = "Monthly/Other"
                 hourlyRecurringFee = 0
-                Hourly_Rate = 0
                 hours = 0
-                recurringFee = float(client['Billing_Invoice_Item'].getTotalRecurringAmount(id=item['id']))
 
             description=item['description']
             description = description.replace('\n', " ")
             # BUILD CSV OUTPUT & WRITE ROW
             row = {'Invoice_Date': Billing_Invoice['createDate'][0:10],
                    'Invoice_Number': invoiceID,
+                   'BillingItemId': billingItemId,
                    'InstanceType': instanceType,
                    'hostName': hostName,
                    'Category': category,
@@ -145,14 +145,10 @@ for invoice in InvoiceList:
                    'Hours': hours,
                    'Hourly_Rate': round(hourlyRecurringFee,3),
                    'RecurringCharge': round(recurringFee,2),
-                   'Credit': credit,
-                   'InvoiceTotal': float(Billing_Invoice['invoiceTotalAmount']),
-                   'InvoiceRecurring': float(Billing_Invoice['invoiceTotalRecurringAmount']),
-                   'Type': Billing_Invoice['typeCode']
+                   'InvoiceTotal': invoiceTotalAmount,
+                   'InvoiceRecurring': invoiceTotalRecurringAmount,
+                   'Type': invoiceType
                     }
             csvwriter.writerow(row)
 ##close CSV File
 outfile.close()
-
-
-
