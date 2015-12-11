@@ -15,9 +15,11 @@ The *PowerOnVirtualServers.py* script can be used to systematically power on VSI
 
 Both scripts require a CSV file with the list of VSI's to be powered on or off and their order.   The CSV filename
 can be passed as a paramenter using the follwing command line parameter
+
 ```
 script.py -i filename.csv
 ```
+
 *CSV Requirements*
 
 Field | Required |Field Description
@@ -34,7 +36,8 @@ Order,id,hostname,wait
 2,13405577,centos01,30
 3,13405581,centos03,30
 ```
-ShowVirtualServerPowerState.py can be used to verify status after running script.
+The *ShowVirtualServerPowerState.py* script can be used to verify status after running script.  This script does not
+require input and instead lists all VSI's in a Datacenter.
 
 
 **Installation of SL API**
