@@ -3,3 +3,4 @@ getPackage.py
 orderoutput.json
 *.csv
 *.ini
+*.sh
