@@ -31,9 +31,8 @@ def initializeSoftLayerAPI(user, key, configfile):
             filename="config.ini"
         config = configparser.ConfigParser()
         config.read(filename)
-        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'],endpoint_url=SoftLayer.API_PRIVATE_ENDPOINT)
+        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'])
     else:
-        #client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'],endpoint_url=SoftLayer.API_PRIVATE_ENDPOINT)
         client = SoftLayer.Client(username=user, api_key=key)
     return client
 
@@ -51,7 +50,7 @@ parser.add_argument("-c", "--config", help="config.ini file to load")
 parser.add_argument("-s", "--startdate", help="start date mm/dd/yy")
 parser.add_argument("-e", "--enddate", help="End date mm/dd/yyyy")
 parser.add_argument("-o", "--output", help="Outputfile")
-parser.add_argument("-v", "--vsicredit", help="Credit Hours")
+
 args = parser.parse_args()
 
 client = initializeSoftLayerAPI(args.username, args.apikey, args.config)
@@ -72,14 +71,10 @@ if args.output == None:
 else:
     outputname=args.output
 
-if args.vsicredit == None:
-    vsicredit=0
-else:
-    vsicredit=float(args.vsicredit)
 
 fieldnames = ['InvoiceID', 'BillingItemId', 'TransactionID', 'Datacenter', 'Product', 'Cores', 'Memory', 'Disk', 'OS', 'Hostname',
               'CreateDate', 'CreateTime', 'PowerOnDate', 'PowerOnTime', 'PowerOnDelta', 'ProvisionedDate',
-              'ProvisionedTime', 'ProvisionedDelta', 'CancellationDate', 'CancellationTime', 'HoursUsed', 'HourlyRecurringFee', 'CreditHours', 'ActualCreditHours', 'CreditAmount']
+              'ProvisionedTime', 'ProvisionedDelta', 'CancellationDate', 'CancellationTime', 'HoursUsed', 'HourlyRecurringFee']
 
 outfile = open(outputname, 'w')
 csvwriter = csv.DictWriter(outfile, delimiter=',', fieldnames=fieldnames)
@@ -178,23 +173,15 @@ for invoice in InvoiceList:
             else:
                     hoursUsed=math.ceil(convert_timedelta(cancellationDateStamp-provisionDateStamp)/60)
 
-            # Calculate Credit if hoursUsed greater than credit offer otherwise credit actual hours
-            if hoursUsed >= vsicredit:
-                   actualCreditHours = vsicredit
-            else:
-                   actualCreditHours = hoursUsed
 
             # CALCULATE HOURLY CHARGE INCLUDING ASSOCIATED CHILDREN
             if 'hourlyRecurringFee' in item:
                 hourlyRecurringFee = round(float(item['hourlyRecurringFee']),3)
-                creditAmount = round(float(item['hourlyRecurringFee']) * actualCreditHours,2)
             else:
                 hourlyRecurringFee = 0
-                creditAmount = 0
 
             for child in billing_detail:
                  hourlyRecurringFee = round(hourlyRecurringFee + float(child['hourlyRecurringFee']),3)
-                 creditAmount = round(creditAmount + round(float(child['hourlyRecurringFee']) * actualCreditHours,2),2)
 
             # Search for oldest powerOn event in Event Log
             eventdate = provisionDateStamp
@@ -261,9 +248,6 @@ for invoice in InvoiceList:
                    'CancellationTime': cancellationTime,
                    'HoursUsed': hoursUsed,
                    'HourlyRecurringFee': hourlyRecurringFee,
-                   'CreditHours': vsicredit,
-                   'ActualCreditHours': actualCreditHours,
-                   'CreditAmount': creditAmount
                    }
             #print (row)
             csvwriter.writerow(row)

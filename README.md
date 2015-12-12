@@ -1,19 +1,14 @@
 **Jon-SL-scripts**
 ==============
 
-Script | Description
------- | -----------
-ConfigurationReport.py | Print's detailed information about bare metal servers in account.
-OrderFromQuote.py | Order bare metal servers from saved quote.  Assign hostname, domain, and VLAN
-addNetworkVlanTrunk.py | Add existing VLAN to server's list of trunked vlans to enable VLAN tagging on switch port
-removeNetworkVlanTrunk.py | Remove VLAN from server's list of trunked vlans to remove VLAN tagging on switch port
-configuration_to_csv.py | Write configuration report to CSV file for import into Excel
-DeprovisionCCI.py | Lists each CCI in account and asks if you would like to Deprovision
-DeprovisionBM.py | Lists Hourly and Monthly Bare Metal Servers and asks if you would like to Deprovision
-GetNewInvoicesExport.py | Print a report of NEW invoices which have a non zero balance between Start and End date
-RecurringInvoiceAnalysis.py | Print a report of Recurring invoices sorted by Hourly vs Monthly between Start and End date
-PowerOffVirtualServers.py| Soft Shutdown, then power off virtual servers listed in order contained in CSV file
-PowerOnVirtualServers.py| Power on virtual server in controlled fasion listed in order contained in CSV file
+Folder| Description
+----- | -----------
+Billing| Scripts associated with SoftLayer billing data
+Misc| Miscelaneous Scripts
+Network| Scripts associated with manipulating SoftLayer Network
+Provisioning| Provisioning Scripts
+Ticketing| Scripts associated with accessing and creating SoftLayer Tickets
+VirtualServers| Scripts associated with managing SoftLayer Virtual Servers
 
 **Installation of SL API**
 
