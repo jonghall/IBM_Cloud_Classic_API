@@ -1,8 +1,8 @@
 __author__ = 'jonhall'
 ## List powerstate for VirtualServers in Datacenter
 
-import sys, getopt, socket, SoftLayer, json, string, configparser, os, argparse,csv, time
-import pandas as pd
+import SoftLayer,  configparser,  argparse
+
 
 def initializeSoftLayerAPI(user, key, configfile):
     if user == None and key == None:
