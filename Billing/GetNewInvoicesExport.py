@@ -8,55 +8,53 @@ __author__ = 'jonhall'
 import sys, getopt, socket, SoftLayer, json, string, configparser, os, argparse, csv
 
 
-def initializeSoftLayerAPI():
-    ## READ CommandLine Arguments and load configuration file
-    parser = argparse.ArgumentParser(description="Print a report of NEW invoices which have a non zero balance between Start and End date.")
-    parser.add_argument("-u", "--username", help="SoftLayer API Username")
-    parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
-    parser.add_argument("-c", "--config", help="config.ini file to load")
-
-    args = parser.parse_args()
-
-    if args.config != None:
-        filename=args.config
-    else:
-        filename="config.ini"
-
-    if (os.path.isfile(filename) is True) and (args.username == None and args.apikey == None):
-        ## Read APIKEY from configuration file
+def initializeSoftLayerAPI(user, key, configfile):
+    if user == None and key == None:
+        if configfile != None:
+            filename=args.config
+        else:
+            filename="config.ini"
         config = configparser.ConfigParser()
         config.read(filename)
-        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'])
+        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'],endpoint_url=SoftLayer.API_PRIVATE_ENDPOINT)
     else:
-        ## Read APIKEY from commandline arguments
-        if args.username == None and args.apikey == None:
-            print ("You must specify a username and APIkey to use.")
-            quit()
-        if args.username == None:
-            print ("You must specify a username with your APIKEY.")
-            quit()
-        if args.apikey == None:
-            print("You must specify a APIKEY with the username.")
-            quit()
-        client = SoftLayer.Client(username=args.username, api_key=args.apikey)
+        #client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'],endpoint_url=SoftLayer.API_PRIVATE_ENDPOINT)
+        client = SoftLayer.Client(username=user, api_key=key)
     return client
 
 
-#
-# Get APIKEY from config.ini & initialize SoftLayer API
-#
+## READ CommandLine Arguments and load configuration file
+parser = argparse.ArgumentParser(description="Print a report of NEW invoices which have a non zero balance between Start and End date.")
+parser.add_argument("-u", "--username", help="SoftLayer API Username")
+parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
+parser.add_argument("-c", "--config", help="config.ini file to load")
+parser.add_argument("-s", "--startdate", help="start date mm/dd/yy")
+parser.add_argument("-e", "--enddate", help="End date mm/dd/yyyy")
+parser.add_argument("-o", "--output", help="Outputfile")
 
-client = initializeSoftLayerAPI()
+args = parser.parse_args()
+
+client = initializeSoftLayerAPI(args.username, args.apikey, args.config)
+
+if args.startdate == None:
+    startdate=input("Report Start Date (MM/DD/YYYY): ")
+else:
+    startdate=args.startdate
+
+if args.enddate == None:
+    enddate=input("Report End Date (MM/DD/YYYY): ")
+else:
+    enddate=args.enddate
+
+if args.output == None:
+    outputname=input("Output filename: ")
+else:
+    outputname=args.output
 
 
 #
 # GET LIST OF INVOICES
 #
-print ()
-
-startdate=input("Report Start Date (MM/DD/YYYY): ")
-enddate=input("Report End Date (MM/DD/YYYY): ")
-outputname=input("CSV Output Filename: ")
 
 outfile = open(outputname, 'w')
 csvwriter = csv.writer(outfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
