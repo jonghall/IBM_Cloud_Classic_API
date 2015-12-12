@@ -1,3 +1,5 @@
 config.ini
 getPackage.py
 orderoutput.json
+*.csv
+*.ini
