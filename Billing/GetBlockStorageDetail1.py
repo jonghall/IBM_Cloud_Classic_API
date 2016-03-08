@@ -2,6 +2,7 @@ __author__ = 'jonhall'
 #
 ## GetBlockStorageDetail1 -
 ## Report of deailed Performance/Endurance Storage authroizations by invoice line item.
+## Pass via commandline  (example: GetBlockStorageDetail1.py -u=userid -k=apikey)
 
 import SoftLayer,configparser, argparse, csv, json,logging,time
 from datetime import datetime
