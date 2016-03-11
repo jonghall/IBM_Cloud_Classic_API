@@ -16,7 +16,7 @@ def initializeSoftLayerAPI(user, key, configfile):
             filename="config.ini"
         config = configparser.ConfigParser()
         config.read(filename)
-        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'],endpoint_url=SoftLayer.API_PRIVATE_ENDPOINT)
+        client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'])
     else:
         #client = SoftLayer.Client(username=config['api']['username'], api_key=config['api']['apikey'],endpoint_url=SoftLayer.API_PRIVATE_ENDPOINT)
         client = SoftLayer.Client(username=user, api_key=key)
