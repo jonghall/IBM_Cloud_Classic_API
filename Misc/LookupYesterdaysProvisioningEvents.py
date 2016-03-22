@@ -69,6 +69,11 @@ if args.output == None:
 else:
     outputname=args.output
 
+# DEFINE SENDGRID DETAILS FOR OUTPUT
+emailto = ['Name#1 <email1@us.ibm.com>','Name#2 <email2@us.ibm.com>']
+emailfrom = "From <from@us.ibm.com>"
+sendgridkey = "apikey"
+
 print ('%s Running Daily Provisioning Report for %s.' % (datetime.strftime(datetime.now(),"%m/%d/%Y %H:%M:%S"),datetime.strftime(yesterday, "%m/%d/%Y")))
 
 distfields = ['Date','Requested', 'NotAllocated', 'NA', 'Reason', '0to30', '31-60', '61-90', '91-120', 'gt120']
@@ -270,12 +275,11 @@ for invoice in InvoiceList:
 outfile.close()
 
 # FORMAT & SEND EMAIL VIA SENDGRID ACCOUNT
-sg = sendgrid.SendGridClient('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')
+sg = sendgrid.SendGridClient(sendgridkey)
 message = sendgrid.Mail()
-message.add_to(['Jon Hall <jonhall@us.ibm.com>','Michelle Chank <mchank@us.ibm.com>', ' Julie V Opheim <vennette@us.ibm.com>'])
-#message.add_to('Jon Hall <jonhall@us.ibm.com>')
-message.set_subject('AFI Daily Provisioning Report')
-body=('<style>table, th, td {border: 1px solid black;}</style><p>AFI Provisioning detail for %s.<br/>Total Provisioning Requests = %s.<br/>' \
+message.add_to(emailfrom)
+message.set_subject('Daily Provisioning Report')
+body=('<style>table, th, td {border: 1px solid black;}</style><p>Provisioning detail for %s.<br/>Total Provisioning Requests = %s.<br/>' \
       'PowerOn events exceeding 30 minutes = %s.<br/>PowerOn events Not Found = %s.</p>' \
        % (datetime.strftime(yesterday, "%m/%d/%Y"),provisionRequests, provisionRequestsgt30,powerOnNotFound))
 
@@ -293,7 +297,7 @@ if provisionRequestsgt30>0:
             body=body+"</table>"
 
 message.set_html(body)
-message.set_from('Jon Hall <jonhall@us.ibm.com>')
+message.set_from(emailfrom)
 message.add_attachment(outputname, './'+outputname)
 status, msg = sg.send(message)
 
