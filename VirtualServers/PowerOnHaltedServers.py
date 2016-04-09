@@ -1,5 +1,5 @@
 __author__ = 'jonhall'
-## List powerstate for VirtualServers in Datacenter
+## PowerOn Halted Servers that meet criteria.
 
 
 import SoftLayer, configparser, argparse, csv, json, pytz, logging
@@ -27,7 +27,7 @@ def initializeSoftLayerAPI(user, key, configfile):
 
 
 ## READ CommandLine Arguments and load configuration file
-parser = argparse.ArgumentParser(description="List powerstate for VirtualServers in Datacenter")
+parser = argparse.ArgumentParser(description="PowerOn Halted Servers that meet criteria.")
 parser.add_argument("-u", "--username", help="SoftLayer API Username")
 parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
 parser.add_argument("-c", "--config", help="config.ini file to load")
