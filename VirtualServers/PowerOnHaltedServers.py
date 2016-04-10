@@ -107,5 +107,5 @@ if len(virtualServers) >= quantity:
 else:
     logging.warning("%s requested, but only %s available." % (quantity, len(virtualServers)))
 
-logging.warning("ip_addresses", ip_addresses)
-logging.warning("guestIdList", guestIdList)
+logging.warning("ip_addresses %s" % (ip_addresses))
+logging.warning("guestIdList %s" % (guestIdList))
