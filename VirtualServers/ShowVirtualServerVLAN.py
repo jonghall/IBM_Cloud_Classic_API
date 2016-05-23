@@ -1,5 +1,5 @@
 __author__ = 'jonhall'
-## List powerstate for VirtualServers in Datacenter
+## List vlans for VirtualServers in Datacenter
 
 import SoftLayer,  configparser,  argparse
 
