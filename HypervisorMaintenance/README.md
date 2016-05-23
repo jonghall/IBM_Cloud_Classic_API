@@ -1,7 +1,7 @@
-**Jon-SL-scripts/VirtualServers**
+**Jon-SL-scripts/HypervisorMaintenance**
 ==============
 The following collection of scripts can be used to systematically power off SoftLayer Virtual Servers in
-preparation for site maintenance.   The *PowerOffVirtualServers.py* script executes an OS soft shutdown, then 
+preparation for hypervisor maintenance.   The *PowerOffVirtualServers.py* script executes an OS soft shutdown, then 
 when completed, powers off the VSI, leaving it permenently in the poweroff state in preparation for the maintenance
 window. The *PowerOnVirtualServers.py* script can then be used to systematically power back on the VSI's after
 the maintenance window is complete.
