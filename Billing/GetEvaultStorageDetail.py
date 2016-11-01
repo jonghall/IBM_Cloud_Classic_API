@@ -71,6 +71,8 @@ csvwriter = csv.DictWriter(outfile, delimiter=',', fieldnames=fieldnames)
 csvwriter.writerow(dict((fn, fn) for fn in fieldnames))
 
 ## OPEN CSV FILE FOR OUTPUT
+logging.basicConfig(filename='getEvaultStorageDetail.log', format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p',level=logging.WARNING)
+
 
 print()
 print("Looking up invoices....")
@@ -99,68 +101,91 @@ InvoiceList = client['Account'].getInvoices(filter={
 for invoice in InvoiceList:
     invoiceID = invoice['id']
     Billing_Invoice=""
+    logging.warning("Retreiving Billing Invoice %s" % (invoiceID))
     while Billing_Invoice is "":
         try:
             time.sleep(1)
-            Billing_Invoice = client['Billing_Invoice'].getObject(id=invoiceID, mask="invoiceTotalAmount, createDate, typeCode, invoiceTopLevelItems, invoiceTopLevelItems.product,invoiceTopLevelItems.location,invoiceTopLevelItems.totalRecurringAmount")
+            # get Invoice Detail
+            Billing_Invoice = client['Billing_Invoice'].getObject(id=invoiceID, mask="invoiceTotalAmount, createDate, typeCode")
         except SoftLayer.SoftLayerAPIError as e:
-            logging.warning("%s, %s" % (e.faultCode, e.faultString))
+            logging.warning("Billing_Invoice:getObject(id=%s): %s, %s" % (invoiceID, e.faultCode, e.faultString))
+
+    invoiceTopLevelItems=""
+    logging.warning("Retreiving Billing Invoice %s Top Level Items." % (invoiceID))
+    while invoiceTopLevelItems is "":
+        try:
+            time.sleep(1)
+            # get Invoice Top Level Items
+            invoiceTopLevelItems = client['Billing_Invoice'].getInvoiceTopLevelItems(id=invoiceID, mask="id,description,categoryCode,billingItemId,resourceTableId,product,location,totalRecurringAmount",
+                                 filter={
+                                     'invoiceTopLevelItems': {
+                                         'categoryCode': {
+                                             'operation': 'in',
+                                             'options': [
+                                                 {'name': 'data',
+                                                  'value': [
+                                                      'evault'
+                                                  ]}
+                                             ]
+                                         },
+                                     }
+                                 })
+
+        except SoftLayer.SoftLayerAPIError as e:
+            logging.warning("Billing_Invoice:getInvoiceTopLevelItems(id=%s): %s, %s" % (invoiceID, e.faultCode, e.faultString))
 
     if Billing_Invoice['invoiceTotalAmount'] > "0":
         invoiceType=Billing_Invoice['typeCode']
         invoiceDate=Billing_Invoice['createDate'][0:10]
-        count=0
-        for item in Billing_Invoice['invoiceTopLevelItems']:
+        for item in invoiceTopLevelItems:
             category = item["categoryCode"]
             storageType=item["product"]['description']
             totalRecurringAmount=item['totalRecurringAmount']
-            count=count + 1
-            if category=="evault":
-                itemId = item['id']
-                associatedInvoiceItemId = item['associatedInvoiceItemId']
-                location=item['location']['name']
-                product=item['description']
-                billingItemId = item['billingItemId']
-                resourceTableId= item['resourceTableId']
-                #print(json.dumps(item,indent=4))
+            itemId = item['id']
+            associatedInvoiceItemId = item['associatedInvoiceItemId']
+            location=item['location']['name']
+            product=item['description']
+            billingItemId = item['billingItemId']
+            resourceTableId= item['resourceTableId']
 
-                #SoftLayer_Network_Storage_Iscsi::getObject
-                resource_detail=""
-                while resource_detail is "":
-                    try:
-                        time.sleep(1)
-                        resource_detail = client['Network_Storage_Backup_Evault'].getObject(id=resourceTableId)
-                    except SoftLayer.SoftLayerAPIError as e:
-                        logging.warning("Network_Storage_Backup_Evault::getObject %s, %s" % (e.faultCode, e.faultString))
-                        break
-                if resource_detail=="":
-                        resource_detail="none"
+            #SoftLayer_Network_Storage_Iscsi::getObject
+            resource_detail=""
+            logging.warning("Getting Network Storage Detail for resource %s." % (resourceTableId))
+            while resource_detail is "":
+                try:
+                    time.sleep(1)
+                    resource_detail = client['Network_Storage_Backup_Evault'].getObject(id=resourceTableId)
+                except SoftLayer.SoftLayerAPIError as e:
+                    logging.warning("Network_Storage_Backup_Evault::getObject(%s) %s, %s" % (resourceTableId, e.faultCode, e.faultString))
+                    break
+            if resource_detail=="":
+                    resource_detail="none"
+            else:
+                evaultUser=resource_detail['username']
+                evaultCapacity=resource_detail['capacityGb']
+                evaultAllocationDate=resource_detail['createDate'][0:10]
+                evaultResource=resource_detail['serviceResourceName']
+                evaultGuestId=resource_detail['guestId']
+                if 'guestId' in resource_detail:
+                    guest = client['Virtual_Guest'].getObject(id=evaultGuestId,mask="hostname")
+                    server=guest['hostname']
                 else:
-                    evaultUser=resource_detail['username']
-                    evaultCapacity=resource_detail['capacityGb']
-                    evaultAllocationDate=resource_detail['createDate'][0:10]
-                    evaultResource=resource_detail['serviceResourceName']
-                    evaultGuestId=resource_detail['guestId']
-                    if 'guestId' in resource_detail:
-                        guest = client['Virtual_Guest'].getObject(id=evaultGuestId,mask="hostname")
-                        server=guest['hostname']
-                    else:
-                        guest = client['Hardware'].getObject(id=evaultGuestId,mask="hostname")
-                        server=guest['hostname']
+                    guest = client['Hardware'].getObject(id=evaultGuestId,mask="hostname")
+                    server=guest['hostname']
 
 
-                    # BUILD CSV OUTPUT & WRITE ROW
-                    row = {'Invoice_Date': invoiceDate,
-                           'Allocation_Date': evaultAllocationDate,
-                           'Invoice_Number': invoiceID,
-                           'BillingItemId': billingItemId,
-                           'StorageType': storageType,
-                           'evaultUser': evaultUser,
-                           'evaultResource': evaultResource,
-                           'ServerBackedUp': server,
-                           'Cost': totalRecurringAmount
-                            }
-                    csvwriter.writerow(row)
-                    print(row)
+                # BUILD CSV OUTPUT & WRITE ROW
+                row = {'Invoice_Date': invoiceDate,
+                       'Allocation_Date': evaultAllocationDate,
+                       'Invoice_Number': invoiceID,
+                       'BillingItemId': billingItemId,
+                       'StorageType': storageType,
+                       'evaultUser': evaultUser,
+                       'evaultResource': evaultResource,
+                       'ServerBackedUp': server,
+                       'Cost': totalRecurringAmount
+                        }
+                csvwriter.writerow(row)
+                print(row)
 ##close CSV File
 outfile.close()
