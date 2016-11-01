@@ -71,6 +71,8 @@ fieldnames = ['Invoice_Date', 'Invoice_Number', 'BillingItemId', 'ResourceTableI
 csvwriter = csv.DictWriter(outfile, delimiter=',', fieldnames=fieldnames)
 csvwriter.writerow(dict((fn, fn) for fn in fieldnames))
 
+logging.basicConfig(filename='GetBlockStorageDetail2.log', format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p',level=logging.WARNING)
+
 ## OPEN CSV FILE FOR OUTPUT
 
 print()
@@ -100,106 +102,131 @@ InvoiceList = client['Account'].getInvoices(filter={
 for invoice in InvoiceList:
     invoiceID = invoice['id']
     Billing_Invoice=""
+    logging.warning("Retreiving Billing Invoice %s" % (invoiceID))
     while Billing_Invoice is "":
         try:
             time.sleep(1)
-            Billing_Invoice = client['Billing_Invoice'].getObject(id=invoiceID, mask="invoiceTotalAmount, createDate, typeCode, invoiceTopLevelItems, invoiceTopLevelItems.product,invoiceTopLevelItems.location,invoiceTopLevelItems.totalRecurringAmount")
+            # get Invoice Detail
+            Billing_Invoice = client['Billing_Invoice'].getObject(id=invoiceID, mask="invoiceTotalAmount, createDate, typeCode")
         except SoftLayer.SoftLayerAPIError as e:
-            logging.warning("%s, %s" % (e.faultCode, e.faultString))
+            logging.warning("Billing_Invoice:getObject(id=%s): %s, %s" % (invoiceID, e.faultCode, e.faultString))
+
+    invoiceTopLevelItems=""
+    logging.warning("Retreiving Billing Invoice %s Top Level Items." % (invoiceID))
+    while invoiceTopLevelItems is "":
+        try:
+            time.sleep(1)
+            # get Invoice Top Level Items
+            invoiceTopLevelItems = client['Billing_Invoice'].getInvoiceTopLevelItems(id=invoiceID, mask="id,description,categoryCode,billingItemId,resourceTableId,product,location,totalRecurringAmount",
+                                 filter={
+                                     'invoiceTopLevelItems': {
+                                         'categoryCode': {
+                                             'operation': 'in',
+                                             'options': [
+                                                 {'name': 'data',
+                                                  'value': [
+                                                      'storage_service_enterprise',
+                                                      'performance_storage_iscsi']}
+                                             ]
+                                         },
+                                     }
+                                 })
+
+        except SoftLayer.SoftLayerAPIError as e:
+            logging.warning("Billing_Invoice:getInvoiceTopLevelItems(id=%s): %s, %s" % (invoiceID, e.faultCode, e.faultString))
 
     if Billing_Invoice['invoiceTotalAmount'] > "0":
         invoiceType=Billing_Invoice['typeCode']
         invoiceDate=Billing_Invoice['createDate'][0:10]
-        count=0
-        for item in Billing_Invoice['invoiceTopLevelItems']:
+        for item in invoiceTopLevelItems:
             category = item["categoryCode"]
             storageType=item["product"]['description']
             totalRecurringAmount=item['totalRecurringAmount']
-            count=count + 1
-            if category=="storage_service_enterprise" or category=="performance_storage_iscsi":
-                itemId = item['id']
-                location=item['location']['name']
-                product=item['description']
-                billingItemId = item['billingItemId']
-                resourceTableId= item['resourceTableId']
-                #print(json.dumps(item,indent=4))
+            itemId = item['id']
+            location=item['location']['name']
+            product=item['description']
+            billingItemId = item['billingItemId']
+            resourceTableId= item['resourceTableId']
+            #print(json.dumps(item,indent=4))
 
-                billing_detail=""
-                while billing_detail is "":
-                    try:
-                        time.sleep(1)
-                        billing_detail = client['Billing_Invoice_Item'].getChildren(id=itemId, mask="description,categoryCode,product")
-                    except SoftLayer.SoftLayerAPIError as e:
-                        logging.warning("%s, %s" % (e.faultCode, e.faultString))
+            billing_detail=""
+            logging.warning("Getting Billing Item %s Detail." % (itemId))
+            while billing_detail is "":
+                try:
+                    time.sleep(1)
+                    billing_detail = client['Billing_Invoice_Item'].getChildren(id=itemId, mask="description,categoryCode,product")
+                except SoftLayer.SoftLayerAPIError as e:
+                    logging.warning("Billing_Invoice_Item:getChildren(id=%s): %s, %s" % (itemId,e.faultCode, e.faultString))
 
 
-                if category=="storage_service_enterprise":
-                    iops=getDescription("storage_tier_level", billing_detail)
-                    storage=getDescription("performance_storage_space", billing_detail)
-                    snapshot=getDescription("storage_snapshot_space", billing_detail)
+            if category=="storage_service_enterprise":
+                iops=getDescription("storage_tier_level", billing_detail)
+                storage=getDescription("performance_storage_space", billing_detail)
+                snapshot=getDescription("storage_snapshot_space", billing_detail)
 
-                if category=="performance_storage_iscsi":
-                    iops=getDescription("performance_storage_iops", billing_detail)
-                    storage=getDescription("performance_storage_space", billing_detail)
-                    snapshot=getDescription("storage_snapshot_space", billing_detail)
+            if category=="performance_storage_iscsi":
+                iops=getDescription("performance_storage_iops", billing_detail)
+                storage=getDescription("performance_storage_space", billing_detail)
+                snapshot=getDescription("storage_snapshot_space", billing_detail)
 
-                #SoftLayer_Network_Storage_Iscsi::getObject
-                resource_detail=""
-                while resource_detail is "":
-                    try:
-                        time.sleep(1)
-                        resource_detail = client['Network_Storage'].getObject(id=resourceTableId, mask="createDate,username,notes,allowedVirtualGuests,allowedSubnets,allowedHardware,iscsiLuns,lunId")
-                    except SoftLayer.SoftLayerAPIError as e:
-                        logging.warning("%s, %s" % (e.faultCode, e.faultString))
-                        if e.faultCode=="SoftLayer_Exception_ObjectNotFound":
-                            logging.warning(json.dumps(billing_detail,indent=4))
-                            resource_detail="none"
+            #SoftLayer_Network_Storage_Iscsi::getObject
+            resource_detail=""
+            logging.warning("Getting Network Storage Detail for resource %s." % (resourceTableId))
+            while resource_detail is "":
+                try:
+                    time.sleep(1)
+                    resource_detail = client['Network_Storage'].getObject(id=resourceTableId, mask="createDate,username,notes,allowedVirtualGuests,allowedSubnets,allowedHardware,iscsiLuns,lunId")
+                except SoftLayer.SoftLayerAPIError as e:
+                    logging.warning("Network_Storage:getOject(id=%s): %s, %s" % (resourceTableId,e.faultCode, e.faultString))
+                    if e.faultCode=="SoftLayer_Exception_ObjectNotFound":
+                        logging.warning(json.dumps(billing_detail,indent=4))
+                        resource_detail="none"
 
-                if resource_detail=="none":
-                    notes=""
-                    storageName=""
-                    authorizedServers=""
-                    allowedSubnets=""
-                    allocationDate=""
+            if resource_detail=="none":
+                notes=""
+                storageName=""
+                authorizedServers=""
+                allowedSubnets=""
+                allocationDate=""
+            else:
+                allocationDate = resource_detail['createDate'][0:10]
+                if 'notes' in resource_detail:
+                    notes=resource_detail['notes']
                 else:
-                    allocationDate = resource_detail['createDate'][0:10]
-                    if 'notes' in resource_detail:
-                        notes=resource_detail['notes']
-                    else:
-                        notes=""
+                    notes=""
 
-                    storageName=resource_detail['username']
-                    authorizedSubnets=resource_detail['allowedSubnets']
-                    authorizedServers=[]
-                    if 'allowedVirtualGuests' in resource_detail:
-                       for server in resource_detail['allowedVirtualGuests']:
-                            authorizedServers.append(server['hostname'])
+                storageName=resource_detail['username']
+                authorizedSubnets=resource_detail['allowedSubnets']
+                authorizedServers=[]
+                if 'allowedVirtualGuests' in resource_detail:
+                   for server in resource_detail['allowedVirtualGuests']:
+                        authorizedServers.append(server['hostname'])
 
-                    if 'allowedHardware' in resource_detail:
-                       for server in resource_detail['allowedHardware']:
-                            authorizedServers.append(server['hostname'])
+                if 'allowedHardware' in resource_detail:
+                   for server in resource_detail['allowedHardware']:
+                        authorizedServers.append(server['hostname'])
 
-                numServers=len(authorizedServers)
-                for x in range(0, numServers):
-                    # BUILD CSV OUTPUT & WRITE ROW
-                    row = {'Invoice_Date': invoiceDate,
-                           'Allocation_Date': allocationDate,
-                           'Invoice_Number': invoiceID,
-                           'BillingItemId': billingItemId,
-                           'ResourceTableId': resourceTableId,
-                           'StorageType': storageType,
-                           'Location': location,
-                           'LUNName': storageName,
-                           'IOPS': iops,
-                           'Size': storage,
-                           'Snapshot': snapshot,
-                           'AuthorizedServer': authorizedServers[x],
-                           'AllAuths': authorizedServers,
-                           'AuthorizedSubnets': authorizedSubnets,
-                           'Notes': notes,
-                           'Cost': totalRecurringAmount/numServers
-                            }
-                    csvwriter.writerow(row)
-                    print(row)
+            numServers=len(authorizedServers)
+            for x in range(0, numServers):
+                # BUILD CSV OUTPUT & WRITE ROW
+                row = {'Invoice_Date': invoiceDate,
+                       'Allocation_Date': allocationDate,
+                       'Invoice_Number': invoiceID,
+                       'BillingItemId': billingItemId,
+                       'ResourceTableId': resourceTableId,
+                       'StorageType': storageType,
+                       'Location': location,
+                       'LUNName': storageName,
+                       'IOPS': iops,
+                       'Size': storage,
+                       'Snapshot': snapshot,
+                       'AuthorizedServer': authorizedServers[x],
+                       'AllAuths': authorizedServers,
+                       'AuthorizedSubnets': authorizedSubnets,
+                       'Notes': notes,
+                       'Cost': totalRecurringAmount/numServers
+                        }
+                csvwriter.writerow(row)
+                print(row)
 ##close CSV File
 outfile.close()
