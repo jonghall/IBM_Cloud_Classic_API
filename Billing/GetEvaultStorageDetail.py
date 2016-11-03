@@ -5,7 +5,7 @@ __author__ = 'jonhall'
 ## or pass via commandline  (example: GetRecurringInvoices.py -u=userid -k=apikey)
 ##
 
-import SoftLayer, configparser, argparse, csv,logging,time
+import SoftLayer, configparser, argparse, csv,logging,time, json
 
 def getDescription(categoryCode, detail):
     for item in detail:
@@ -32,23 +32,12 @@ parser = argparse.ArgumentParser(description="Report of deailed eVault allocatio
 parser.add_argument("-u", "--username", help="SoftLayer API Username")
 parser.add_argument("-k", "--apikey", help="SoftLayer APIKEY")
 parser.add_argument("-c", "--config", help="config.ini file to load")
-parser.add_argument("-s", "--startdate", help="start date mm/dd/yy")
-parser.add_argument("-e", "--enddate", help="End date mm/dd/yyyy")
 parser.add_argument("-o", "--output", help="Outputfile")
 
 args = parser.parse_args()
 
 client = initializeSoftLayerAPI(args.username, args.apikey, args.config)
 
-if args.startdate == None:
-    startdate=input("Report Start Date (MM/DD/YYYY): ")
-else:
-    startdate=args.startdate
-
-if args.enddate == None:
-    enddate=input("Report End Date (MM/DD/YYYY): ")
-else:
-    enddate=args.enddate
 
 if args.output == None:
     outputname=input("Output filename: ")
@@ -65,127 +54,73 @@ outfile = open(outputname, 'w')
 csvwriter = csv.writer(outfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
 
 
-fieldnames = ['Invoice_Date', 'Invoice_Number', 'BillingItemId', 'Allocation_Date', 'StorageType',
-              'evaultUser', 'evaultResource','ServerBackedUp', 'Cost']
+fieldnames = ['LastBillDate' , 'BillingItemId', 'Allocation_Date', 'StorageType', 'BytesUsed',
+              'evaultUser', 'evaultResource','ServerBackedUp', 'ServerNotes', 'Cost']
 csvwriter = csv.DictWriter(outfile, delimiter=',', fieldnames=fieldnames)
 csvwriter.writerow(dict((fn, fn) for fn in fieldnames))
 
 ## OPEN CSV FILE FOR OUTPUT
-logging.basicConfig(filename='getEvaultStorageDetail.log', format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p',level=logging.WARNING)
+logging.basicConfig( format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p',level=logging.WARNING)
 
 
-print()
-print("Looking up invoices....")
-
-# Build Filter for Invoices
-InvoiceList = client['Account'].getInvoices(filter={
-        'invoices': {
-            'createDate': {
-                'operation': 'betweenDate',
-                'options': [
-                     {'name': 'startDate', 'value': [startdate+" 0:0:0"]},
-                     {'name': 'endDate', 'value': [enddate+" 23:59:59"]}
-
-                ]
-            },
-            'typeCode': {
-                'operation': 'in',
-                'options': [
-                    {'name': 'data', 'value': ['RECURRING']}
-                ]
-                },
-                    }
-        })
 
 
-for invoice in InvoiceList:
-    invoiceID = invoice['id']
-    Billing_Invoice=""
-    logging.warning("Retreiving Billing Invoice %s" % (invoiceID))
-    while Billing_Invoice is "":
-        try:
-            time.sleep(1)
-            # get Invoice Detail
-            Billing_Invoice = client['Billing_Invoice'].getObject(id=invoiceID, mask="invoiceTotalAmount, createDate, typeCode")
-        except SoftLayer.SoftLayerAPIError as e:
-            logging.warning("Billing_Invoice:getObject(id=%s): %s, %s" % (invoiceID, e.faultCode, e.faultString))
+logging.warning("Looking up current evault allocations.")
 
-    invoiceTopLevelItems=""
-    logging.warning("Retreiving Billing Invoice %s Top Level Items." % (invoiceID))
-    while invoiceTopLevelItems is "":
-        try:
-            time.sleep(1)
-            # get Invoice Top Level Items
-            invoiceTopLevelItems = client['Billing_Invoice'].getInvoiceTopLevelItems(id=invoiceID, mask="id,description,categoryCode,billingItemId,resourceTableId,product,location,totalRecurringAmount",
-                                 filter={
-                                     'invoiceTopLevelItems': {
-                                         'categoryCode': {
-                                             'operation': 'in',
-                                             'options': [
-                                                 {'name': 'data',
-                                                  'value': [
-                                                      'evault'
-                                                  ]}
-                                             ]
-                                         },
-                                     }
-                                 })
-
-        except SoftLayer.SoftLayerAPIError as e:
-            logging.warning("Billing_Invoice:getInvoiceTopLevelItems(id=%s): %s, %s" % (invoiceID, e.faultCode, e.faultString))
-
-    if Billing_Invoice['invoiceTotalAmount'] > "0":
-        invoiceType=Billing_Invoice['typeCode']
-        invoiceDate=Billing_Invoice['createDate'][0:10]
-        for item in invoiceTopLevelItems:
-            category = item["categoryCode"]
-            storageType=item["product"]['description']
-            totalRecurringAmount=item['totalRecurringAmount']
-            itemId = item['id']
-            associatedInvoiceItemId = item['associatedInvoiceItemId']
-            location=item['location']['name']
-            product=item['description']
-            billingItemId = item['billingItemId']
-            resourceTableId= item['resourceTableId']
-
-            #SoftLayer_Network_Storage_Iscsi::getObject
-            resource_detail=""
-            logging.warning("Getting Network Storage Detail for resource %s." % (resourceTableId))
-            while resource_detail is "":
-                try:
-                    time.sleep(1)
-                    resource_detail = client['Network_Storage_Backup_Evault'].getObject(id=resourceTableId)
-                except SoftLayer.SoftLayerAPIError as e:
-                    logging.warning("Network_Storage_Backup_Evault::getObject(%s) %s, %s" % (resourceTableId, e.faultCode, e.faultString))
-                    break
-            if resource_detail=="":
-                    resource_detail="none"
-            else:
-                evaultUser=resource_detail['username']
-                evaultCapacity=resource_detail['capacityGb']
-                evaultAllocationDate=resource_detail['createDate'][0:10]
-                evaultResource=resource_detail['serviceResourceName']
-                evaultGuestId=resource_detail['guestId']
-                if 'guestId' in resource_detail:
-                    guest = client['Virtual_Guest'].getObject(id=evaultGuestId,mask="hostname")
-                    server=guest['hostname']
-                else:
-                    guest = client['Hardware'].getObject(id=evaultGuestId,mask="hostname")
-                    server=guest['hostname']
+evaults=""
+while evaults is "":
+    try:
+        time.sleep(1)
+        # get list of evault allocations
+        evaults = client['Account'].getEvaultNetworkStorage(mask="id,createDate,capacityGb,username,nasType,hardwareId,billingItem,serviceResource,serviceResourceName,totalBytesUsed,hardware,virtualGuest")
+    except SoftLayer.SoftLayerAPIError as e:
+        logging.warning("Account:getEvaultNetworkStorage: %s, %s" % ( e.faultCode, e.faultString))
 
 
-                # BUILD CSV OUTPUT & WRITE ROW
-                row = {'Invoice_Date': invoiceDate,
-                       'Allocation_Date': evaultAllocationDate,
-                       'Invoice_Number': invoiceID,
-                       'BillingItemId': billingItemId,
-                       'StorageType': storageType,
-                       'evaultUser': evaultUser,
-                       'evaultResource': evaultResource,
-                       'ServerBackedUp': server,
-                       'Cost': totalRecurringAmount
-                        }
-                csvwriter.writerow(row)
-                print(row)
+for evault in evaults:
+
+    createDate=evault['createDate'][0:10]
+    lastBillDate=evault['billingItem']['lastBillDate']
+    cancelationDate=evault['billingItem']['cancellationDate']
+    billingItemId=evault['billingItem']['id']
+    capacityGb=evault['capacityGb']
+    username=evault['username']
+    nasType=evault['nasType']
+    description=evault['billingItem']['description']
+    recurringFee=evault['billingItem']['recurringFee']
+    serviceResourceName=evault['serviceResourceName']
+    totalBytesUsed=evault['totalBytesUsed']
+
+    if 'virtualGuest' in evault:
+        server = evault['virtualGuest']['hostname']
+        if 'notes' in evault['virtualGuest']:
+            server_notes =  evault['virtualGuest']['notes']
+        else:
+            server_notes = ""
+    elif 'hardware' in evault:
+        server = evault['hardware']['hostname']
+        if 'notes' in evault['hardware']:
+            server_notes =  evault['hardware']['notes']
+        else:
+            server_notes = ""
+    else:
+        server = ""
+        server_notes = ""
+
+
+    # BUILD CSV OUTPUT & WRITE ROW
+    row = {'LastBillDate': lastBillDate,
+           'Allocation_Date': createDate,
+           'BillingItemId': billingItemId,
+           'StorageType': description,
+           'BytesUsed': totalBytesUsed,
+           'evaultUser': username,
+           'evaultResource': serviceResourceName,
+           'ServerBackedUp': server,
+           'ServerNotes': server_notes,
+           'Cost': recurringFee
+            }
+    csvwriter.writerow(row)
+    print(row)
 ##close CSV File
 outfile.close()
