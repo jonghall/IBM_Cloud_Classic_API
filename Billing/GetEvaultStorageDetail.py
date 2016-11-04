@@ -5,7 +5,7 @@ __author__ = 'jonhall'
 ## or pass via commandline  (example: GetRecurringInvoices.py -u=userid -k=apikey)
 ##
 
-import SoftLayer, configparser, argparse, csv,logging,time, json
+import SoftLayer, configparser, argparse, csv,logging,time, json, decimal
 
 def getDescription(categoryCode, detail):
     for item in detail:
@@ -54,8 +54,8 @@ outfile = open(outputname, 'w')
 csvwriter = csv.writer(outfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
 
 
-fieldnames = ['LastBillDate' , 'BillingItemId', 'Allocation_Date', 'StorageType', 'BytesUsed',
-              'evaultUser', 'evaultResource','ServerBackedUp', 'ServerNotes', 'Cost']
+fieldnames = ['LastBillDate' , 'BillingItemId', 'Allocation_Date', 'StorageType', 'capacityGb', 'usedGb',
+              'evaultUser', 'evaultResource','ServerBackedUp', 'ServerNotes', 'Cost', "OverAllocation"]
 csvwriter = csv.DictWriter(outfile, delimiter=',', fieldnames=fieldnames)
 csvwriter.writerow(dict((fn, fn) for fn in fieldnames))
 
@@ -72,13 +72,12 @@ while evaults is "":
     try:
         time.sleep(1)
         # get list of evault allocations
-        evaults = client['Account'].getEvaultNetworkStorage(mask="id,createDate,capacityGb,username,nasType,hardwareId,billingItem,serviceResource,serviceResourceName,totalBytesUsed,hardware,virtualGuest")
+        evaults = client['Account'].getEvaultNetworkStorage(mask="id,createDate,username,nasType,hardwareId,billingItem,serviceResource,serviceResourceName,capacityGb,totalBytesUsed,hardware,virtualGuest")
     except SoftLayer.SoftLayerAPIError as e:
         logging.warning("Account:getEvaultNetworkStorage: %s, %s" % ( e.faultCode, e.faultString))
 
 
 for evault in evaults:
-
     createDate=evault['createDate'][0:10]
     lastBillDate=evault['billingItem']['lastBillDate']
     cancelationDate=evault['billingItem']['cancellationDate']
@@ -89,7 +88,17 @@ for evault in evaults:
     description=evault['billingItem']['description']
     recurringFee=evault['billingItem']['recurringFee']
     serviceResourceName=evault['serviceResourceName']
-    totalBytesUsed=evault['totalBytesUsed']
+    totalBytesUsed=int(evault['totalBytesUsed'])
+    usedGb=totalBytesUsed/1024/1024/1024
+    if int(usedGb) > int(capacityGb):
+        overAllocation=True
+    else:
+        overAllocation=False
+    usedGb="{0:.2f}".format(usedGb)
+
+    #detail = client['Billing_Item'].getObject(id=133366069)
+    #print (json.dumps(detail,indent=4))
+    #quit()
 
     if 'virtualGuest' in evault:
         server = evault['virtualGuest']['hostname']
@@ -113,12 +122,14 @@ for evault in evaults:
            'Allocation_Date': createDate,
            'BillingItemId': billingItemId,
            'StorageType': description,
-           'BytesUsed': totalBytesUsed,
+           'capacityGb': capacityGb,
+           'usedGb': usedGb,
            'evaultUser': username,
            'evaultResource': serviceResourceName,
            'ServerBackedUp': server,
            'ServerNotes': server_notes,
-           'Cost': recurringFee
+           'Cost': recurringFee,
+           'OverAllocation': overAllocation
             }
     csvwriter.writerow(row)
     print(row)
