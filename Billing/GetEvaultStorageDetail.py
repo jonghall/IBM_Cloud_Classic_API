@@ -1,9 +1,8 @@
-__author__ = 'jonhall'
+__author__ __author__ = 'jonhall'
 #
 ## Get eVault Storage detail
 ## Place APIKEY & Username in config.ini
 ## or pass via commandline  (example: GetRecurringInvoices.py -u=userid -k=apikey)
-##
 
 import SoftLayer, configparser, argparse, csv,logging,time, json, decimal
 
@@ -51,7 +50,7 @@ csvwriter = csv.writer(outfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE
 
 
 fieldnames = ['BillingItemId', 'Allocation_Date', 'evaultUser', 'evaultResource','ServerBackedUp', 'ServerNotes',
-              'currentCapacityGb', 'currentUsedGb', 'currentlyOverAllocation', 'LastBillDate',
+              'currentCapacityGb', 'currentUsedGb', 'currentEvaultPackage', 'currentEvaultFee','currentlyOverAllocation', 'LastBillDate',
               'lastInvoiceId', 'lastInvoiceFee', 'item1Description', 'item1Fee', 'item2Description', 'item2Fee', 'cancellationDate']
 
 
@@ -74,7 +73,7 @@ evaults=""
 while evaults is "":
     try:
         time.sleep(1)
-        evaults = client['Account'].getEvaultNetworkStorage(mask="id,createDate,username,nasType,hardwareId,billingItem.id,billingItem.lastBillDate,"
+        evaults = client['Account'].getEvaultNetworkStorage(mask="id,createDate,username,nasType,hardwareId,billingItem.description,billingItem.recurringFee,billingItem.id,billingItem.lastBillDate,"
                                                                  "billingItem.cancellationDate,serviceResource, serviceResourceName,capacityGb,totalBytesUsed,virtualGuest,hardware")
     except SoftLayer.SoftLayerAPIError as e:
         logging.warning("Account:getEvaultNetworkStorage: %s, %s" % ( e.faultCode, e.faultString))
@@ -101,10 +100,12 @@ for evault in evaults:
     createDate=evault['createDate'][0:10]
     lastBillDate=evault['billingItem']['lastBillDate'][0:10]
     cancellationDate=evault['billingItem']['cancellationDate'][0:10]
+    description=evault['billingItem']['description']  #evault package purchased
+    recurringFee=evault['billingItem']['recurringFee']  # evault package recurring Fee
     nasType=evault['nasType']
     serviceResourceName=evault['serviceResourceName']
     username=evault['username']
-    capacityGb = evault['capacityGb']
+    capacityGb = evault['capacityGb'] # currently allocated amount, not always package amount
     totalBytesUsed=int(evault['totalBytesUsed'])
     usedGb=totalBytesUsed/1024/1024/1024
     if int(usedGb) > int(capacityGb):
@@ -177,6 +178,8 @@ for evault in evaults:
            'ServerNotes': server_notes,
            'currentCapacityGb': capacityGb,
            'currentUsedGb': usedGb,
+           'currentEvaultPackage': description,
+           'currentEvaultFee': recurringFee,
            'currentlyOverAllocation': overAllocation,
            'lastInvoiceId': lastInvoiceId,
            'lastInvoiceFee': lastInvoiceTotal,
