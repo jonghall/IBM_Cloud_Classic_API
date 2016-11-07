@@ -1,4 +1,4 @@
-__author__ __author__ = 'jonhall'
+__author__ = 'jonhall'
 #
 ## Get eVault Storage detail
 ## Place APIKEY & Username in config.ini
@@ -74,7 +74,7 @@ while evaults is "":
     try:
         time.sleep(1)
         evaults = client['Account'].getEvaultNetworkStorage(mask="id,createDate,username,nasType,hardwareId,billingItem.description,billingItem.recurringFee,billingItem.id,billingItem.lastBillDate,"
-                                                                 "billingItem.cancellationDate,serviceResource, serviceResourceName,capacityGb,totalBytesUsed,virtualGuest,hardware")
+                                                                 "billingItem.cancellationDate,serviceResource, serviceResourceName,totalBytesUsed,virtualGuest,hardware")
     except SoftLayer.SoftLayerAPIError as e:
         logging.warning("Account:getEvaultNetworkStorage: %s, %s" % ( e.faultCode, e.faultString))
 
@@ -101,14 +101,14 @@ for evault in evaults:
     lastBillDate=evault['billingItem']['lastBillDate'][0:10]
     cancellationDate=evault['billingItem']['cancellationDate'][0:10]
     description=evault['billingItem']['description']  #evault package purchased
-    recurringFee=evault['billingItem']['recurringFee']  # evault package recurring Fee
+    recurringFee="${:6,.2f}".format(float(evault['billingItem']['recurringFee'] )) # evault package recurring Fee
     nasType=evault['nasType']
     serviceResourceName=evault['serviceResourceName']
     username=evault['username']
-    capacityGb = evault['capacityGb'] # currently allocated amount, not always package amount
-    totalBytesUsed=int(evault['totalBytesUsed'])
+    currentCapacityGb = description[0:description.find("GB")]# currently allocated amount, not always package amount
+    totalBytesUsed=float(evault['totalBytesUsed'])
     usedGb=totalBytesUsed/1024/1024/1024
-    if int(usedGb) > int(capacityGb):
+    if int(usedGb) > int(currentCapacityGb):
         overAllocation=True
     else:
         overAllocation=False
@@ -131,7 +131,6 @@ for evault in evaults:
     else:
         server = ""
         server_notes = ""
-
 
     # Get the last Invoice Billing detail to determine actual charges
     logging.warning("Searching for overage charges on last invoice for parent item %s." % (parentId))
@@ -160,12 +159,12 @@ for evault in evaults:
     for detail in billingDetail:
             if detail['categoryCode'] == "evault":
                 item1Description=detail['description'].replace('\n', " ")
-                item1Fee="{:6,.2f}".format(float(detail['recurringFee']))
+                item1Fee="${:6,.2f}".format(float(detail['recurringFee']))
             if detail['categoryCode'] == "storagelayer_additional_storage":
                 item2Description=detail['description'].replace('\n', " ")
-                item2Fee="{:6,.2f}".format(float(detail['recurringFee']))
+                item2Fee="${:6,.2f}".format(float(detail['recurringFee']))
             total=total+float(detail['recurringFee'])
-    lastInvoiceTotal= ("{:6,.2f}".format(total))
+    lastInvoiceTotal= ("${:6,.2f}".format(total))
 
 
     # BUILD CSV OUTPUT & WRITE ROW
@@ -176,7 +175,7 @@ for evault in evaults:
            'evaultResource': serviceResourceName,
            'ServerBackedUp': server,
            'ServerNotes': server_notes,
-           'currentCapacityGb': capacityGb,
+           'currentCapacityGb': currentCapacityGb,
            'currentUsedGb': usedGb,
            'currentEvaultPackage': description,
            'currentEvaultFee': recurringFee,
