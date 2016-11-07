@@ -45,61 +45,76 @@ else:
     outputname=args.output
 
 
-#
-# GET LIST OF INVOICES
-#
-
 
 outfile = open(outputname, 'w')
 csvwriter = csv.writer(outfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
 
 
-fieldnames = ['LastBillDate' , 'BillingItemId', 'Allocation_Date', 'StorageType', 'capacityGb', 'usedGb',
-              'evaultUser', 'evaultResource','ServerBackedUp', 'ServerNotes', 'Cost', "OverAllocation"]
+fieldnames = ['BillingItemId', 'Allocation_Date', 'evaultUser', 'evaultResource','ServerBackedUp', 'ServerNotes',
+              'currentCapacityGb', 'currentUsedGb', 'currentlyOverAllocation', 'LastBillDate',
+              'lastInvoiceId', 'lastInvoiceFee', 'item1Description', 'item1Fee', 'item2Description', 'item2Fee', 'cancellationDate']
+
+
 csvwriter = csv.DictWriter(outfile, delimiter=',', fieldnames=fieldnames)
 csvwriter.writerow(dict((fn, fn) for fn in fieldnames))
 
 ## OPEN CSV FILE FOR OUTPUT
-logging.basicConfig( format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p',level=logging.WARNING)
+logging.basicConfig(format='%(asctime)s %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p',level=logging.WARNING)
+
+# Get last invoice ID, to be used to check actuals for each evault Allocation
+logging.warning("Getting Last Invoice Id")
+latestRecurringInvoice = client['Account'].getLatestRecurringInvoice()
+lastInvoiceId = latestRecurringInvoice['id']
 
 
+logging.warning("Retreiving all current evault allocations.")
 
-
-logging.warning("Looking up current evault allocations.")
-
+# get list of evault allocations currently active in account
 evaults=""
 while evaults is "":
     try:
         time.sleep(1)
-        # get list of evault allocations
-        evaults = client['Account'].getEvaultNetworkStorage(mask="id,createDate,username,nasType,hardwareId,billingItem,serviceResource,serviceResourceName,capacityGb,totalBytesUsed,hardware,virtualGuest")
+        evaults = client['Account'].getEvaultNetworkStorage(mask="id,createDate,username,nasType,hardwareId,billingItem.id,billingItem.lastBillDate,"
+                                                                 "billingItem.cancellationDate,serviceResource, serviceResourceName,capacityGb,totalBytesUsed,virtualGuest,hardware")
     except SoftLayer.SoftLayerAPIError as e:
         logging.warning("Account:getEvaultNetworkStorage: %s, %s" % ( e.faultCode, e.faultString))
 
 
 for evault in evaults:
-    createDate=evault['createDate'][0:10]
-    lastBillDate=evault['billingItem']['lastBillDate']
-    cancelationDate=evault['billingItem']['cancellationDate']
+    #  Get related invoiceItems from last Invoice
+    logging.warning("Searching invoiceItems on last Invoice for billingItem %s." % (evault['billingItem']['id']))
+    try:
+        time.sleep(1)
+        invoiceItems = client['Billing_Item'].getInvoiceItems(id=evault['billingItem']['id'], filter={
+                        'invoiceItems': {
+                            'invoiceId': {
+                                 'operation': lastInvoiceId
+                        }}})
+    except SoftLayer.SoftLayerAPIError as e:
+        logging.warning("Billing_Item::getInvoiceItems(id=%s): %s, %s" % (evault['billingItem']['id'], e.faultCode, e.faultString))
+
+
+    # Get parent ID for the last Invoice
+    parentId = invoiceItems[0]['parentId']
+    evaultId=evault['id']
     billingItemId=evault['billingItem']['id']
-    capacityGb=evault['capacityGb']
-    username=evault['username']
+    createDate=evault['createDate'][0:10]
+    lastBillDate=evault['billingItem']['lastBillDate'][0:10]
+    cancellationDate=evault['billingItem']['cancellationDate'][0:10]
     nasType=evault['nasType']
-    description=evault['billingItem']['description']
-    recurringFee=evault['billingItem']['recurringFee']
     serviceResourceName=evault['serviceResourceName']
+    username=evault['username']
+    capacityGb = evault['capacityGb']
     totalBytesUsed=int(evault['totalBytesUsed'])
     usedGb=totalBytesUsed/1024/1024/1024
     if int(usedGb) > int(capacityGb):
         overAllocation=True
     else:
         overAllocation=False
+
     usedGb="{0:.2f}".format(usedGb)
 
-    #detail = client['Billing_Item'].getObject(id=133366069)
-    #print (json.dumps(detail,indent=4))
-    #quit()
-
+    #Determine eVault Server being backed up
     if 'virtualGuest' in evault:
         server = evault['virtualGuest']['hostname']
         if 'notes' in evault['virtualGuest']:
@@ -117,21 +132,62 @@ for evault in evaults:
         server_notes = ""
 
 
+    # Get the last Invoice Billing detail to determine actual charges
+    logging.warning("Searching for overage charges on last invoice for parent item %s." % (parentId))
+    try:
+        time.sleep(1)
+        billingDetail = client['Billing_Invoice_Item'].getFilteredAssociatedChildren(id=parentId, filter={
+            'filteredAssociatedChildren': {
+                'categoryCode': {
+                    'operation': 'in',
+                    'options': [
+                        {'name': 'data',
+                         'value': [
+                             'evault',
+                             'storagelayer_additional_storage']}]
+                }}})
+    except SoftLayer.SoftLayerAPIError as e:
+        logging.warning("Billing_Invoice_Item::getFilteredAssociatedChildren(id=%s): %s, %s" % (parentId, e.faultCode, e.faultString))
+
+    # Calculate total charge including overages for last invoice for related items.
+    total=0
+    item1Descrition=""
+    item1Fee=0
+    item2Description=""
+    item2Fee=0
+
+    for detail in billingDetail:
+            if detail['categoryCode'] == "evault":
+                item1Description=detail['description'].replace('\n', " ")
+                item1Fee="{:6,.2f}".format(float(detail['recurringFee']))
+            if detail['categoryCode'] == "storagelayer_additional_storage":
+                item2Description=detail['description'].replace('\n', " ")
+                item2Fee="{:6,.2f}".format(float(detail['recurringFee']))
+            total=total+float(detail['recurringFee'])
+    lastInvoiceTotal= ("{:6,.2f}".format(total))
+
+
     # BUILD CSV OUTPUT & WRITE ROW
     row = {'LastBillDate': lastBillDate,
            'Allocation_Date': createDate,
            'BillingItemId': billingItemId,
-           'StorageType': description,
-           'capacityGb': capacityGb,
-           'usedGb': usedGb,
            'evaultUser': username,
            'evaultResource': serviceResourceName,
            'ServerBackedUp': server,
            'ServerNotes': server_notes,
-           'Cost': recurringFee,
-           'OverAllocation': overAllocation
+           'currentCapacityGb': capacityGb,
+           'currentUsedGb': usedGb,
+           'currentlyOverAllocation': overAllocation,
+           'lastInvoiceId': lastInvoiceId,
+           'lastInvoiceFee': lastInvoiceTotal,
+           'item1Description': item1Description,
+           'item1Fee': item1Fee,
+           'item2Description': item2Description,
+           'item2Fee': item2Fee,
+           'cancellationDate': cancellationDate
             }
     csvwriter.writerow(row)
-    print(row)
+
 ##close CSV File
 outfile.close()
+
