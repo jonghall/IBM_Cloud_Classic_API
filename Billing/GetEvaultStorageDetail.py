@@ -49,8 +49,8 @@ outfile = open(outputname, 'w')
 csvwriter = csv.writer(outfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
 
 
-fieldnames = ['BillingItemId', 'Allocation_Date', 'evaultUser', 'evaultResource','ServerBackedUp', 'ServerNotes',
-              'currentCapacityGb', 'currentUsedGb', 'currentEvaultPackage', 'currentEvaultFee','currentlyOverAllocation', 'LastBillDate',
+fieldnames = ['BillingItemId', 'Allocation_Date', 'evaultUser', 'evaultResource','ServerBackedUp', 'ServerNotes', 'backupJobName', 'backupJobDescription','backupJobResult',
+              'backupJobLastRun', 'currentCapacityGb', 'currentUsedGb', 'currentEvaultPackage', 'currentEvaultFee','currentlyOverAllocation', 'LastBillDate',
               'lastInvoiceId', 'lastInvoiceFee', 'item1Description', 'item1Fee', 'item2Description', 'item2Fee', 'cancellationDate']
 
 
@@ -73,8 +73,8 @@ evaults=""
 while evaults is "":
     try:
         time.sleep(1)
-        evaults = client['Account'].getEvaultNetworkStorage(mask="id,createDate,username,nasType,hardwareId,billingItem.description,billingItem.recurringFee,billingItem.id,billingItem.lastBillDate,"
-                                                                 "billingItem.cancellationDate,serviceResource, serviceResourceName,totalBytesUsed,virtualGuest,hardware")
+        evaults = client['Account'].getEvaultNetworkStorage(mask="mask(SoftLayer_Network_Storage_Backup_Evault_Version6)[id,createDate,username,nasType,hardwareId,backupJobDetailCount, backupJobDetails,"
+                                                                 "serviceResource, serviceResourceName,totalBytesUsed,virtualGuest,hardware]")
     except SoftLayer.SoftLayerAPIError as e:
         logging.warning("Account:getEvaultNetworkStorage: %s, %s" % ( e.faultCode, e.faultString))
 
@@ -114,6 +114,14 @@ for evault in evaults:
         overAllocation=False
 
     usedGb="{0:.2f}".format(usedGb)
+
+    #consolidate BackupJob Details (First Job Only)
+    backupJobDetail=evault['backupJobDetails'][0]
+    backupJobName = backupJobDetail['name']
+    backupJobDescription = backupJobDetail['description']
+    backupJobResult = backupJobDetail['result']
+    backupJobLastRun = backupJobDetail['lastRunDate'][:10]
+
 
     #Determine eVault Server being backed up
     if 'virtualGuest' in evault:
@@ -175,6 +183,10 @@ for evault in evaults:
            'evaultResource': serviceResourceName,
            'ServerBackedUp': server,
            'ServerNotes': server_notes,
+           'backupJobName': backupJobName,
+           'backupJobDescription': backupJobDescription,
+           'backupJobResult': backupJobResult,
+           'backupJobLastRun': backupJobLastRun,
            'currentCapacityGb': currentCapacityGb,
            'currentUsedGb': usedGb,
            'currentEvaultPackage': description,
