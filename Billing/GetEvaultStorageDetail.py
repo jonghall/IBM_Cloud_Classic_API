@@ -69,15 +69,13 @@ lastInvoiceId = latestRecurringInvoice['id']
 logging.warning("Retreiving all current evault allocations.")
 
 # get list of evault allocations currently active in account
-evaults=""
-while evaults is "":
-    try:
-        time.sleep(1)
-        evaults = client['Account'].getEvaultNetworkStorage(mask="mask(SoftLayer_Network_Storage_Backup_Evault_Version6)[id,createDate,username,nasType,hardwareId,backupJobDetailCount, backupJobDetails,"
-                                                                 "serviceResource, serviceResourceName,totalBytesUsed,virtualGuest,hardware]")
-    except SoftLayer.SoftLayerAPIError as e:
-        logging.warning("Account:getEvaultNetworkStorage: %s, %s" % ( e.faultCode, e.faultString))
-
+try:
+    time.sleep(1)
+    evaults = client['Account'].getEvaultNetworkStorage(mask="mask(SoftLayer_Network_Storage_Backup_Evault_Version6)[id,createDate,username,nasType,hardwareId,billingItem.description,billingItem.recurringFee," \
+                                "billingItem.id,billingItem.lastBillDate,billingItem.cancellationDate,backupJobDetails,serviceResource,serviceResourceName,totalBytesUsed,virtualGuest,hardware]")
+except SoftLayer.SoftLayerAPIError as e:
+    logging.warning("Account:getEvaultNetworkStorage: %s, %s" % ( e.faultCode, e.faultString))
+    quit()
 
 for evault in evaults:
     #  Get related invoiceItems from last Invoice
