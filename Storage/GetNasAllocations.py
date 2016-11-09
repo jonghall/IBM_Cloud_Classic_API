@@ -148,7 +148,7 @@ for volume in volumes:
             print("     {:<15}{:<40}{:<10}".format(hardware['id'], hardware['fullyQualifiedDomainName'][:39], hardware['primaryBackendIpAddress']))
     else:
         print()
-        print("No Harware authorized to access volume.")
+        print("No Hardware authorized to access volume.")
 
 
     if len(volume['allowedSubnets']) > 0:
