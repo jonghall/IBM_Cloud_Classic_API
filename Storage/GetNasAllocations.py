@@ -37,8 +37,8 @@ logging.warning("Retreiving all current NAS storage allocations.")
 
 # get list of iSCSI Allocations in Account
 try:
-    volumes = client['Account'].getNetworkStorage(mask="id,username,capacityGb,nasType,billingItem.description,serviceResource," \
-            "serviceResource.datacenter,serviceResourceName,serviceResourceBackendIpAddress,totalBytesUsed",
+    volumes = client['Account'].getNetworkStorage(mask="id,username,capacityGb,nasType,serviceResource,billingItemCategory," \
+            "serviceResource.datacenter,serviceResourceBackendIpAddress,bytesUsed,totalBytesUsed,storageType,storageTierLevel",
             filter={
                 'networkStorage': {
                         'nasType': {
@@ -53,25 +53,41 @@ except SoftLayer.SoftLayerAPIError as e:
     logging.warning("Account:getNetworkStorage: %s, %s" % ( e.faultCode, e.faultString))
     quit()
 
-
 print ("=======================================================================================================================")
 
 for volume in volumes:
-    try:
-        schedules=client['Network_Storage'].getSchedules(id=volume['id'], mask="id,name,retentionCount")
-    except SoftLayer.SoftLayerAPIError as e:
-        logging.warning("Network_Storage::getSchedules: %s, %s" % (e.faultCode, e.faultString))
-        quit()
+    # If Endurance storage check if Snapshots or Schedules Exist
+    if volume['billingItemCategory']['categoryCode'] == "storage_service_enterprise":
+        try:
+            schedules=client['Network_Storage'].getSchedules(id=volume['id'], mask="id,name,retentionCount")
+        except SoftLayer.SoftLayerAPIError as e:
+            logging.warning("Network_Storage::getSchedules: %s, %s" % (e.faultCode, e.faultString))
+            quit()
 
-    try:
-        snapshots=client['Network_Storage'].getSnapshots(id=volume['id'], mask="id, creationScheduleId, notes, snapshotSizeBytes,createDate")
-    except SoftLayer.SoftLayerAPIError as e:
-        logging.warning("Network_Storage::getSnapshots: %s, %s" % (e.faultCode, e.faultString))
-        quit()
+        try:
+            snapshots=client['Network_Storage'].getSnapshots(id=volume['id'], mask="id, creationScheduleId, notes, snapshotSizeBytes,createDate")
+        except SoftLayer.SoftLayerAPIError as e:
+            logging.warning("Network_Storage::getSnapshots: %s, %s" % (e.faultCode, e.faultString))
+            quit()
+    else:
+        schedules=[]
+        snapshots=[]
 
+    if 'bytesUsed' in volume:
+        bytes=float(volume['bytesUsed'])
+    elif 'totalBytesUsed' in volume:
+        bytes=float(volume['totalBytesUsed'])
+    else:
+        bytes=0
+    usedGb = "{:6,.2f}".format(bytes/1024/1024/1024)
+
+    if 'storageTierLevel' in volume:
+        storageType=volume['storageType']['description']+" "+volume['storageTierLevel']['description']
+    else:
+        storageType=volume['storageType']['description']
     print()
-    print ("{:<10}{:<20}{:<20}{:<40}{:<20}{:<20}".format("StorageId", "LUN Name","Type", "Target", "Capacity", "Location"))
-    print ("{:<10}{:<20}{:<20}{:<40}{:<20}{:<20}".format(volume['id'],volume['username'], volume['billingItem']['description'], volume['serviceResourceBackendIpAddress'], volume['capacityGb'], volume['serviceResource']['datacenter']['name']))
+    print ("{:<10}{:<20}{:<45}{:<40}{:<15}{:<12}{:<12}".format("StorageId", "LUN Name","Type", "Target", "CapacityGb", "UsedGb", "Location"))
+    print ("{:<10}{:<20}{:<45}{:<40}{:<15}{:<12}{:<12}".format(volume['id'],volume['username'], storageType[:44], volume['serviceResourceBackendIpAddress'][:39], volume['capacityGb'],usedGb, volume['serviceResource']['datacenter']['name']))
 
     ## PRINT Schedules
     if len(schedules) > 0:
