@@ -60,13 +60,13 @@ for volume in volumes:
     # If Endurance storage check if Snapshots or Schedules Exist
     if volume['billingItemCategory']['categoryCode'] == "storage_service_enterprise":
         try:
-            schedules=client['Network_Storage'].getSchedules(id=volume['id'], mask="id,name,retentionCount")
+            schedules=client['Network_Storage'].getSchedules(id=volume['id'], mask="id,name,retentionCount,type")
         except SoftLayer.SoftLayerAPIError as e:
             logging.warning("Network_Storage::getSchedules: %s, %s" % (e.faultCode, e.faultString))
             quit()
 
         try:
-            snapshots=client['Network_Storage'].getSnapshots(id=volume['id'], mask="id, creationScheduleId, notes, snapshotSizeBytes,createDate")
+            snapshots=client['Network_Storage'].getSnapshots(id=volume['id'], mask="id,creationScheduleId,notes,snapshotSizeBytes,createDate")
         except SoftLayer.SoftLayerAPIError as e:
             logging.warning("Network_Storage::getSnapshots: %s, %s" % (e.faultCode, e.faultString))
             quit()
@@ -104,30 +104,37 @@ for volume in volumes:
         print("     ---------")
         print("     {:<15}{:<30}{:<10}".format("ScheduleId", "Schedule", "Retention"))
         for schedule in schedules:
-            print("     {:<15}{:<30}{:<10}".format(schedule['id'], schedule['name'],schedule['retentionCount']))
+            print("     {:<15}{:<30}{:<10}".format(schedule['id'], schedule['type']['name'],schedule['retentionCount']))
     else:
         print ()
         print ("No Schedules")
+
     ## PRINT Snapshot stats
     if len(snapshots) > 0:
         print()
         print("     Snapshots")
         print("     ---------")
-        print("     {:<15}{:<30}{:<40}{:<10}{:<20}".format("SnapshotId", "Schedule", "Name", "Size", "Created"))
+        print("     {:<15}{:<30}{:<40}{:<10}{:<20}".format("SnapshotId", "Schedule", "Notes", "Size", "Created"))
         for snap in snapshots:
             if 'notes' in snap:
                 notes=snap['notes']
             else:
                 notes=''
             if 'creationScheduleId' in snap:
-                creationScheduleId=snap['creationScheduleId']
+                try:
+                    scheduleDetail = client['Network_Storage_Schedule'].getObject(id=snap['creationScheduleId'],mask="type")
+                except SoftLayer.SoftLayerAPIError as e:
+                    logging.warning("Network_Storage_Schedule::getAllowedHosts: %s, %s" % (e.faultCode, e.faultString))
+                    quit()
+                scheduleName=scheduleDetail['type']['name']
             else:
-                creationScheduleId="Manual"
-            print("     {:<15}{:<30}{:<40}{:<10}{:<20}".format(snap['id'], creationScheduleId, notes[0:39], snap['snapshotSizeBytes'],snap['createDate'][:10]))
+                scheduleName="Manual"
+            print("     {:<15}{:<30}{:<40}{:<10}{:<20}".format(snap['id'], scheduleName, notes[0:39], snap['snapshotSizeBytes'],snap['createDate'][:10]))
     else:
         print()
         print("No Snapshots")
 
+    # PRINT resources allowed to access storage Volume
     if len(volume['allowedVirtualGuests']) > 0:
         print()
         print("     AllowedVirtualGuests")
