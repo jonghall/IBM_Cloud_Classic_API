@@ -38,7 +38,8 @@ logging.warning("Retreiving all current NAS storage allocations.")
 # get list of iSCSI Allocations in Account
 try:
     volumes = client['Account'].getNetworkStorage(mask="id,username,capacityGb,nasType,serviceResource,billingItemCategory," \
-            "serviceResource.datacenter,serviceResourceBackendIpAddress,bytesUsed,totalBytesUsed,storageType,storageTierLevel",
+            "serviceResource.datacenter,serviceResourceBackendIpAddress,bytesUsed,totalBytesUsed,storageType,storageTierLevel," \
+            "allowedHardware,allowedIpAddresses,allowedSubnets,allowedVirtualGuests", \
             filter={
                 'networkStorage': {
                         'nasType': {
@@ -72,6 +73,13 @@ for volume in volumes:
     else:
         schedules=[]
         snapshots=[]
+
+    try:
+        allowedHardware = client['Network_Storage'].getAllowedHardware(id=volume['id'])
+    except SoftLayer.SoftLayerAPIError as e:
+        logging.warning("Network_Storage::getAllowedHosts: %s, %s" % (e.faultCode, e.faultString))
+        quit()
+
 
     if 'bytesUsed' in volume:
         bytes=float(volume['bytesUsed'])
@@ -119,6 +127,45 @@ for volume in volumes:
     else:
         print()
         print("No Snapshots")
+
+    if len(volume['allowedVirtualGuests']) > 0:
+        print()
+        print("     AllowedVirtualGuests")
+        print("     ---------")
+        print("     {:<15}{:<40}{:<10}".format("virtualGuestId", "FQDN", "IP"))
+        for virtualGuest in volume['allowedVirtualGuests']:
+            print("     {:<15}{:<40}{:<10}".format(virtualGuest['id'], virtualGuest['fullyQualifiedDomainName'][:39], virtualGuest['primaryBackendIpAddress']))
+    else:
+        print()
+        print("No VirtualGuests authorized to access volume.")
+
+    if len(volume['allowedHardware']) > 0:
+        print()
+        print("     AllowedHardware")
+        print("     ---------")
+        print("     {:<15}{:<40}{:<10}".format("hardwareId", "FQDN", "IP"))
+        for hardware in volume['allowedHardware']:
+            print("     {:<15}{:<40}{:<10}".format(hardware['id'], hardware['fullyQualifiedDomainName'][:39], hardware['primaryBackendIpAddress']))
+    else:
+        print()
+        print("No Harware authorized to access volume.")
+
+
+    if len(volume['allowedSubnets']) > 0:
+        print()
+        print("     AllowedSubnets")
+        print("     ---------")
+        print("     {:<15}{:<20}{:<20}{:<20}".format("subnetId", "networkIdentifier", "netmask","note"))
+        for subnet in volume['allowedSubnets']:
+            if 'note' in subnet:
+                note = subnet['notes']
+            else:
+                note = ""
+            print("     {:<15}{:<20}{:<20}{:<20}".format(subnet['id'], subnet['networkIdentifier'], subnet['netmask'],note))
+    else:
+        print()
+        print("No subnets authorized to access volume.")
+
     print()
     print ("=======================================================================================================================")
 
