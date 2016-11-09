@@ -3,5 +3,5 @@
 
 Script | Description
 ------ | -----------
-getiSCSIAllocations.py | Report of block storage (iSCSI) allocations, schedules, and snapshots.
+GetNasAllocations.py | Report all block and file storage allocations (Endurance & Performance), schedules, snapshots and authorizations.
 GetEvaultStorageDetail.py | Report of deailed eVault allocations.
