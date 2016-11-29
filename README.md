@@ -6,6 +6,7 @@ Folder| Description
 Billing| Scripts associated with SoftLayer billing data
 Misc| Miscelaneous Scripts
 Network| Scripts associated with manipulating SoftLayer Network
+Storage| Scripts used to report on or manipulate Storage Services
 Provisioning| Provisioning Scripts
 Ticketing| Scripts associated with accessing and creating SoftLayer Tickets
 VirtualServers| Scripts associated with managing SoftLayer Virtual Servers
