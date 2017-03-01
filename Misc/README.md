@@ -8,5 +8,6 @@ ConfigurationReport.py | Print's detailed information about bare metal servers i
 ConfigurationReport2CSV.py | Export Bare Metal configurations to CSV file
 create_users_from_list.py | Create SoftLayer Users from list
 EventLogPowerOn.py | Find PowerOn events in EventLog
+generateDailyStats.py | Generate daily provisioning stats from invoice records.
 LookupAllVSIProvisioningEvents.py | Print All VSI detail (request timestam, provisioning timestamp, cancelation timestamp, VSI details, etc)
 LookupYesterdaysProvisioningEvents.py | Print Yesterday's VSI detail (request timestam, provisioning timestamp, cancelation timestamp, VSI details, etc)
