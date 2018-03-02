@@ -5,7 +5,7 @@ __author__ = 'jonhall'
 ## or pass via commandline  (example: GetRecurringInvoices.py -u=userid -k=apikey)
 ##
 
-import sys, getopt, socket, SoftLayer, json, string, configparser, os, argparse, csv,logging,time
+import SoftLayer, configparser, argparse, csv,logging,time
 
 def getDescription(categoryCode, detail):
     for item in detail:
