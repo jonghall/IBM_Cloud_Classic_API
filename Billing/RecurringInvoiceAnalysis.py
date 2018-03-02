@@ -98,21 +98,33 @@ InvoiceList = client['Account'].getInvoices(filter={
 
 
 print ()
-print ('{:<35} {:<30} {:>8} {:>16} {:>16} {:>16} {:<15}'.format("Invoice Date /", "Invoice Number /", " ", " ", "Recurring Charge",  "Invoice Amount", "Type"))
-print ('{:<35} {:<30} {:>8} {:>16} {:>16} {:>16} {:<15}'.format("==============", "================", " ", " ", "================",  "==============", "===="))
+print ('{:<35} {:<30} {:>8} {:>16} {:>16} {:>16} {:<15}'.format("Invoice Date /", "Invoice Number /", " ", "Items", "Recurring Charge",  "Invoice Amount", "Type"))
+print ('{:<35} {:<30} {:>8} {:>16} {:>16} {:>16} {:<15}'.format("==============", "================", " ", "=====", "================",  "==============", "===="))
 for invoice in InvoiceList:
     invoiceID = invoice['id']
-    time.sleep(1)
-    Billing_Invoice = client['Billing_Invoice'].getObject(id=invoiceID, mask="invoiceTopLevelItems, invoiceTopLevelItems.totalRecurringAmount, invoiceTotalAmount, invoiceTopLevelItemCount, invoiceTotalRecurringAmount")
-    if Billing_Invoice['invoiceTotalAmount'] > "0":
-        invoiceTotalAmount=float(Billing_Invoice['invoiceTotalAmount'])
-        invoiceTotalRecurringAmount=float(Billing_Invoice['invoiceTotalRecurringAmount'])
-        invoiceType=Billing_Invoice['typeCode']
+    invoiceInfo = client['Billing_Invoice'].getObject(id=invoiceID,mask="id,createDate,typeCode,invoiceTotalAmount,invoiceTotalRecurringAmount,invoiceTopLevelItemCount")
+    invoiceDate = invoiceInfo['createDate'][0:10]
+    invoiceTotalAmount = float(invoiceInfo['invoiceTotalAmount'])
+    invoiceTotalRecurringAmount = float(invoiceInfo['invoiceTotalRecurringAmount'])
+    invoiceType = invoiceInfo['typeCode']
+    totalItems=invoiceInfo['invoiceTopLevelItemCount']
+
+    # PRINT INVOICE SUMMARY LINE
+    print('{:35} {:<30} {:>8} {:>16} {:>16,.2f} {:>16,.2f} {:<15}'.format(invoiceDate,
+                                                                          invoiceInfo['id'], " ",
+                                                                          totalItems,
+                                                                          invoiceTotalAmount,
+                                                                          invoiceTotalRecurringAmount, invoiceType))
+
+    limit = 10 ## set limit of record t
+    for offset in range(0,totalItems,limit):
+        print ("Lookup at Offset %s" % offset)
+        time.sleep(1)
+        Billing_Invoice = client['Billing_Invoice'].getInvoiceTopLevelItems(id=invoiceID, limit=limit, offset=offset,
+                                mask='id, billingItemId, categoryCode, hostName, domainName, description, createDate, totalRecurringAmount,hourlyRecurringFee')
         count=0
-        # PRINT INVOICE SUMMARY LINE
-        print ('{:35} {:<30} {:>8} {:>16} {:>16,.2f} {:>16,.2f} {:<15}'.format(Billing_Invoice['createDate'][0:10], Billing_Invoice['id'], " ", " ", invoiceTotalAmount, invoiceTotalRecurringAmount, invoiceType))
         # ITERATE THROUGH DETAIL
-        for item in Billing_Invoice['invoiceTopLevelItems']:
+        for item in Billing_Invoice:
             billingItemId = item['billingItemId']
             category = item["categoryCode"]
 
@@ -129,7 +141,7 @@ for invoice in InvoiceList:
                 associated_children=""
                 while associated_children is "":
                     try:
-                        time.sleep(1)
+                        time.sleep(0.5)
                         associated_children = client['Billing_Invoice_Item'].getNonZeroAssociatedChildren(id=item['id'],mask="hourlyRecurringFee")
                     except SoftLayer.SoftLayerAPIError as e:
                         logging.warning("getNonZeroAssociatedChildren(): %s, %s" % (e.faultCode, e.faultString))
@@ -171,7 +183,7 @@ for invoice in InvoiceList:
                 description=item['description']
                 description = description.replace('\n', " ")
             # BUILD CSV OUTPUT & WRITE ROW
-            row = {'Invoice_Date': Billing_Invoice['createDate'][0:10],
+            row = {'Invoice_Date': invoiceDate,
                    'Invoice_Number': invoiceID,
                    'BillingItemId': billingItemId,
                    'InstanceType': instanceType,
