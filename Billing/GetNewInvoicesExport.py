@@ -90,7 +90,7 @@ InvoiceList = client['Account'].getInvoices(mask='createDate,typeCode, id, invoi
             }
         })
 
-#print (json.dumps(InvoiceList,indent=4))
+
 print ()
 print ('{:<40} {:<40} {:>18} {:>16} {:>16} {:<16}'.format("Invoice Date /", "Invoice Number /", "Recurring Charges", "OneTime Charges", "Invoice Amount", "Type"))
 print ('{:<40} {:<40} {:>18} {:>16} {:>16} {:<16}'.format("Hostname      ", "Description     ", "                 ", "               ", "              ", "    "))
@@ -98,48 +98,68 @@ print ('{:<40} {:<40} {:>18} {:>16} {:>16} {:<16}'.format("==============", "===
 for invoice in InvoiceList:
     invoiceID = invoice['id']
     if invoice['invoiceTotalAmount'] != "0":
-        Billing_Invoice = client['Billing_Invoice'].getObject(id=invoiceID, mask="invoiceTopLevelItemCount,invoiceTopLevelItems,invoiceTotalAmount, invoiceTotalOneTimeAmount, invoiceTotalRecurringAmount")
-        # PRINT INVOICE SUMMARY
-        print ('{:40} {:<40} {:>18,.2f} {:>16,.2f} {:>16,.2f} {:<16}'.format(Billing_Invoice['createDate'][0:10], Billing_Invoice['id'], float(Billing_Invoice['invoiceTotalAmount']), float(Billing_Invoice['invoiceTotalOneTimeAmount']), float(Billing_Invoice['invoiceTotalRecurringAmount']), Billing_Invoice['typeCode']))
-        # GET associated items for recurring and onetime totals per Top Level TIem
-        for item in Billing_Invoice['invoiceTopLevelItems']:
-            associated_children = client['Billing_Invoice_Item'].getAssociatedChildren(id=item['id'])
-            recurringFee = float(item['recurringFee'])
-            oneTimeFee = float(item['oneTimeFee'])
-            for child in associated_children:
-                 #print (json.dumps(item, indent=4))
-                 recurringFee = recurringFee + float(child['recurringFee'])
-                 oneTimeFee = oneTimeFee + float(child['oneTimeFee'])
-            if 'hostName' in item:
-                hostName = item['hostName']+"."+item['domainName']
-            else:
-                hostName = "Unnamed Device"
+
+        invoiceInfo = client['Billing_Invoice'].getObject(id=invoiceID,
+                                     mask="id,createDate,typeCode,invoiceTotalAmount,invoiceTotalRecurringAmount,invoiceTotalOneTimeAmount,invoiceTopLevelItemCount")
+        invoiceDate = invoiceInfo['createDate'][0:10]
+        invoiceTotalAmount = float(invoiceInfo['invoiceTotalAmount'])
+        invoiceTotalRecurringAmount = float(invoiceInfo['invoiceTotalRecurringAmount'])
+        invoiceTotalOneTimeAmount = float(invoiceInfo['invoiceTotalOneTimeAmount'])
+        invoiceType = invoiceInfo['typeCode']
+        totalItems = invoiceInfo['invoiceTopLevelItemCount']
+
+        # PRINT INVOICE SUMMARY LINE
+        print('{:40} {:<40} {:>18,.2f} {:>16,.2f} {:>16,.2f} {:<16}'.format(invoiceDate,
+                                                                            invoiceID,
+                                                                            invoiceTotalAmount,
+                                                                            invoiceTotalOneTimeAmount,
+                                                                            invoiceTotalRecurringAmount,
+                                                                            invoiceType))
+
+        limit = 10  ## set limit of record t
+        for offset in range(0, totalItems, limit):
+            Billing_Invoice = client['Billing_Invoice'].getInvoiceTopLevelItems(id=invoiceID, limit=limit, offset=offset,
+                                mask='id, billingItemId, categoryCode, hostName, domainName, description, createDate, recurringFee, oneTimeFee, totalRecurringAmount,hourlyRecurringFee')
+
+            # GET associated items for recurring and onetime totals per Top Level TIem
+            for item in Billing_Invoice:
+                associated_children = client['Billing_Invoice_Item'].getAssociatedChildren(id=item['id'])
+                recurringFee = float(item['recurringFee'])
+                oneTimeFee = float(item['oneTimeFee'])
+                for child in associated_children:
+                     #print (json.dumps(item, indent=4))
+                     recurringFee = recurringFee + float(child['recurringFee'])
+                     oneTimeFee = oneTimeFee + float(child['oneTimeFee'])
+                if 'hostName' in item:
+                    hostName = item['hostName']+"."+item['domainName']
+                else:
+                    hostName = "Unnamed Device"
 
 
-            # PRINT TOP LEVEL ITEMS DETAIL FOR  INVOICE
-            if recurringFee >0 or oneTimeFee > 0:
-                category = item["categoryCode"]
-                #for topLevel in topLevelCategories:
-                #    if topLevel['categoryCode'] == category:
-                #        category = topLevel['name']
-                #        quit
-                print ('{:<40} {:<40} {:>18,.2f} {:>16,.2f}'.format(hostName[0:40], category[0:40], round(recurringFee,2), round(oneTimeFee,2)))
-                description=item['description']
-                description = description.replace('\n', " ")
-                # BUILD CSV OUTPUT & WRITE ROW
-                row = {'Invoice_Date': Billing_Invoice['createDate'][0:10],
-                       'Invoice_Number': invoiceID,
-                       'hostName': hostName,
-                       'Category': category,
-                       'Description': description,
-                       'RecurringCharge': round(recurringFee,2),
-                       'OneTimeCharge': round(oneTimeFee,2),
-                       'InvoiceTotalAmount': float(Billing_Invoice['invoiceTotalAmount']),
-                       'InvoiceTotalOneTimeAmount': float(Billing_Invoice['invoiceTotalOneTimeAmount']),
-                       'InvoiceTotalRecurringAmount': float(Billing_Invoice['invoiceTotalRecurringAmount']),
-                       'Type': Billing_Invoice['typeCode']
-                        }
-                csvwriter.writerow(row)
+                # PRINT TOP LEVEL ITEMS DETAIL FOR  INVOICE
+                if recurringFee >0 or oneTimeFee > 0:
+                    category = item["categoryCode"]
+                    #for topLevel in topLevelCategories:
+                    #    if topLevel['categoryCode'] == category:
+                    #        category = topLevel['name']
+                    #        quit
+                    print ('{:<40} {:<40} {:>18,.2f} {:>16,.2f}'.format(hostName[0:40], category[0:40], round(recurringFee,2), round(oneTimeFee,2)))
+                    description=item['description']
+                    description = description.replace('\n', " ")
+                    # BUILD CSV OUTPUT & WRITE ROW
+                    row = {'Invoice_Date': invoiceDate,
+                           'Invoice_Number': invoiceID,
+                           'hostName': hostName,
+                           'Category': category,
+                           'Description': description,
+                           'RecurringCharge': round(recurringFee,2),
+                           'OneTimeCharge': round(oneTimeFee,2),
+                           'InvoiceTotalAmount': invoiceTotalAmount,
+                           'InvoiceTotalOneTimeAmount': invoiceTotalOneTimeAmount,
+                           'InvoiceTotalRecurringAmount': invoiceTotalRecurringAmount,
+                           'Type': invoiceType
+                            }
+                    csvwriter.writerow(row)
 
         print()
 
