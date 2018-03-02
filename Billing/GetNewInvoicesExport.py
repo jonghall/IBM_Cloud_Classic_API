@@ -5,7 +5,7 @@ __author__ = 'jonhall'
 ## or pass via commandline  (example: GetNewInvoices.py -u=userid -k=apikey)
 ##
 
-import sys, getopt, socket, SoftLayer, json, string, configparser, os, argparse, csv
+import SoftLayer, json, configparser, argparse, csv
 
 
 def initializeSoftLayerAPI(user, key, configfile):
