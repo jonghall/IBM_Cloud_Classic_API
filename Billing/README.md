@@ -8,3 +8,4 @@ RecurringInvoiceAnalysis.py | Print a report of Recurring invoices sorted by Hou
 GetBlockStorageDetail1.py | Report of detailed Performance/Endurance Storage authroizations by allocaiton.
 GetBlockStorageDetail2.py | Report of detailed Performance/Endurance Storage authroizations by authorized server.
 GetEvaultStorageDetail.py | Report of deailed eVault allocations.
+invoiceAnalysis.py | Consolidate New and Recurring invoices between dates for analysis in Excel.

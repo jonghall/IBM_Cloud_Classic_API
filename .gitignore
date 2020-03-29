@@ -234,7 +234,7 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 # Manual adds
-.idea/*
+.idea/**
 config.ini
 orderoutput.json
 *.xlsx
