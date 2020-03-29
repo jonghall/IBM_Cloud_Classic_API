@@ -3,13 +3,13 @@
 
 Folder| Description
 ----- | -----------
-Billing| Scripts associated with SoftLayer billing data
+Billing| Scripts associated with IBM Cloud classic billing data
 Misc| Miscelaneous Scripts
-Network| Scripts associated with manipulating SoftLayer Network
+Network| Scripts associated with manipulating IBM Cloud Classic Network
 Storage| Scripts used to report on or manipulate Storage Services
 Provisioning| Provisioning Scripts
-Ticketing| Scripts associated with accessing and creating SoftLayer Tickets
-VirtualServers| Scripts associated with managing SoftLayer Virtual Servers
+Ticketing| Scripts associated with accessing and creating IBM Cloud Classic Tickets
+VirtualServers| Scripts associated with managing IBM Cloud Classic Virtual Servers
 
 **Installation of SL API**
 
