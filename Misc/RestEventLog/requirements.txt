@@ -2,7 +2,7 @@ click==5.1
 cookies==2.2.1
 Flask==1.0
 itsdangerous==0.24
-Jinja2==2.8
+Jinja2==2.10
 MarkupSafe==0.23
 prettytable==0.7.2
 prompt-toolkit==0.54
