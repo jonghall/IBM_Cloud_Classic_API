@@ -61,7 +61,7 @@ else:
 
 
 # Create dataframe to work with
-df=pd.DataFrame(columns=['Invoice_Date',
+df=pd.DataFrame(columns=['SL_Invoice',
                    'IBM_Invoice',
                    'Invoice_Number',
                    'Type',
@@ -71,8 +71,8 @@ df=pd.DataFrame(columns=['Invoice_Date',
                    'Description',
                    'Memory',
                    'OS',
-                   'HourlyFlag',
-                   'UsageChargeFlag',
+                   'Hourly',
+                   'Usage',
                    'Hours',
                    'HourlyRate',
                    'totalRecurringCharge',
@@ -131,7 +131,7 @@ for invoice in InvoiceList:
             month = month - 12
             year = year + 1
 
-    ibmInvoiceDate = datetime(year, month, 1)
+    ibmInvoiceDate = datetime(year, month, 1).strftime('%Y-%b')
 
     invoiceTotalRecurringAmount = float(invoice['invoiceTotalRecurringAmount'])
     invoiceType = invoice['typeCode']
@@ -207,7 +207,7 @@ for invoice in InvoiceList:
                 description = description.replace('\n', " ")
 
             # Append record to dataframe
-            row = {'Invoice_Date': invoiceDate,
+            row = {'SL_Invoice': invoiceDate,
                    'IBM_Invoice': ibmInvoiceDate,
                    'Invoice_Number': invoiceID,
                    'BillingItemId': billingItemId,
@@ -216,8 +216,8 @@ for invoice in InvoiceList:
                    'Description': description,
                    'Memory': memory,
                    'OS': os,
-                   'HourlyFlag': item["hourlyFlag"],
-                   'UsageChargeFlag': item["usageChargeFlag"],
+                   'Hourly': item["hourlyFlag"],
+                   'Usage': item["usageChargeFlag"],
                    'Hours': hours,
                    'HourlyRate': round(hourlyRecurringFee,3),
                    'totalRecurringCharge': round(recurringFee,3),
@@ -229,8 +229,37 @@ for invoice in InvoiceList:
             df = df.append(row, ignore_index=True)
 
 
-# Write dataframe to excel
-print("Creating Excel File.")
+## Write dataframe to excel
+print("Creating Pivots File.")
 writer = pd.ExcelWriter(args.output, engine='xlsxwriter')
 df.to_excel(writer, 'Detail')
-writer.save()
+
+# Get the xlsxwriter workbook and worksheet objects.
+workbook = writer.book
+
+# Add some cell formats.
+categorySummary = pd.pivot_table(df, index=["Category", "Description"],
+                        values=["totalRecurringCharge"],
+                        columns=["IBM_Invoice"],
+                        aggfunc={'totalRecurringCharge': np.sum}, fill_value=0).\
+                                rename(columns={'totalRecurringCharge': 'Total'})
+categorySummary.to_excel(writer, 'CategorySummary')
+# Set the column width and format.
+format1 = workbook.add_format({'num_format': '$#,##0.00'})
+format2 = workbook.add_format({'align': 'left'})
+worksheet = writer.sheets['CategorySummary']
+worksheet.set_column('A:B', 30, format2)
+worksheet.set_column('C:M', 18, format1)
+
+
+virtualServers = df.query('Category == ["Computing Instance"] and Hourly == [True]')
+virtualServerPivot = pd.pivot_table(virtualServers, index=["Description", "OS"],
+                        values=["Hours", "totalRecurringCharge"],
+                        columns=["IBM_Invoice"],
+                        aggfunc={'Description': len, 'Hours': np.sum, 'totalRecurringCharge': np.sum}, fill_value=0).\
+                                rename(columns={"Description": 'qty', 'Hours': 'Total Hours', 'totalRecurringCharge': 'Total'})
+
+virtualServerPivot.to_excel(writer, 'HrlyVirtualServerPivot')
+worksheet = writer.sheets['HrlyVirtualServerPivot']
+worksheet.set_column('A:B', 30, format2)
+worksheet.set_column('Y:AI', 18, format1)
