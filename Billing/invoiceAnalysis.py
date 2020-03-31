@@ -229,7 +229,7 @@ for invoice in InvoiceList:
             df = df.append(row, ignore_index=True)
 
 
-## Write dataframe to excel
+# Write dataframe to excel
 print("Creating Pivots File.")
 writer = pd.ExcelWriter(args.output, engine='xlsxwriter')
 df.to_excel(writer, 'Detail')
@@ -263,3 +263,27 @@ virtualServerPivot.to_excel(writer, 'HrlyVirtualServerPivot')
 worksheet = writer.sheets['HrlyVirtualServerPivot']
 worksheet.set_column('A:B', 30, format2)
 worksheet.set_column('Y:AI', 18, format1)
+
+monthlyVirtualServers = df.query('Category == ["Computing Instance"] and Hourly == [False]')
+virtualServerPivot = pd.pivot_table(monthlyVirtualServers, index=["Description", "OS"],
+                        values=["totalRecurringCharge"],
+                        columns=["IBM_Invoice"],
+                        aggfunc={'Description': len, 'totalRecurringCharge': np.sum}, fill_value=0).\
+                                rename(columns={"Description": 'qty', 'totalRecurringCharge': 'Total'})
+virtualServerPivot.to_excel(writer, 'MnthlyVirtualServerPivot')
+worksheet = writer.sheets['MnthlyVirtualServerPivot']
+worksheet.set_column('A:B', 30, format2)
+worksheet.set_column('N:X', 18, format1)
+
+bareMetalServers = df.query('Category == ["Server"]')
+bareMetalServerPivot = pd.pivot_table(bareMetalServers, index=["Description", "OS"],
+                        values=["totalRecurringCharge"],
+                        columns=["IBM_Invoice"],
+                        aggfunc={'Description': len,  'totalRecurringCharge': np.sum}, fill_value=0).\
+                                rename(columns={"Description": 'qty', 'totalRecurringCharge': 'Total'})
+bareMetalServerPivot.to_excel(writer, 'BaremetalServerPivot')
+worksheet = writer.sheets['BaremetalServerPivot']
+worksheet.set_column('A:B', 30, format2)
+worksheet.set_column('N:X', 18, format1)
+
+writer.save()
