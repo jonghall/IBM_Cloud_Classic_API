@@ -30,7 +30,21 @@ def getDescription(categoryCode, detail):
                 return item['product']['description'].strip()
     return ""
 
+def getibminvoicedate(invoice_date):
 
+    # Determine IBM GTS Invoice (20th - 19th of month) fro SL invoice date
+    year = invoiceDate.year
+    month = invoiceDate.month
+    day = invoiceDate.day
+    if day <= 19:
+        month = month + 1
+    else:
+        month = month + 2
+
+    if month > 12:
+        month = month - 12
+        year = year + 1
+    return datetime(year, month, 1).strftime('%Y-%m')
 
 ## READ CommandLine Arguments and load configuration file
 parser = argparse.ArgumentParser(description="Export detail from invoices between dates sorted by Hourly vs Monthly "
@@ -96,12 +110,6 @@ InvoiceList = client['Account'].getInvoices(mask='id,createDate,typeCode,invoice
                      {'name': 'startDate', 'value': [startdate+" 0:0:0"]},
                      {'name': 'endDate', 'value': [enddate+" 23:59:59"]}
                 ]
-            },
-            'typeCode': {
-                'operation': 'in',
-                'options': [
-                    {'name': 'data', 'value': ['RECURRING', 'ONE-TIME-CHARGE', 'NEW']}
-                ]
             }
         }
 })
@@ -115,23 +123,7 @@ for invoice in InvoiceList:
     invoiceID = invoice['id']
     invoiceDate = datetime.strptime(invoice['createDate'][:10], "%Y-%m-%d")
     invoiceTotalAmount = float(invoice['invoiceTotalAmount'])
-
-    # Determine IBM GTS Invoice (20th - 19th of month)
-    year = invoiceDate.year
-    month = invoiceDate.month
-    day = invoiceDate.day
-    if day <= 19:
-        month = month + 1
-        if month > 12:
-            month = month - 12
-            year = year + 1
-    else:
-        month = month + 2
-        if month > 12:
-            month = month - 12
-            year = year + 1
-
-    ibmInvoiceDate = datetime(year, month, 1).strftime('%Y-%b')
+    ibmInvoiceDate= getibminvoicedate(invoiceDate)
 
     invoiceTotalRecurringAmount = float(invoice['invoiceTotalRecurringAmount'])
     invoiceType = invoice['typeCode']
@@ -232,58 +224,91 @@ for invoice in InvoiceList:
 # Write dataframe to excel
 print("Creating Pivots File.")
 writer = pd.ExcelWriter(args.output, engine='xlsxwriter')
-df.to_excel(writer, 'Detail')
-
-# Get the xlsxwriter workbook and worksheet objects.
 workbook = writer.book
 
-# Add some cell formats.
+#
+# Write detail tab
+#
+df.to_excel(writer, 'Detail')
+usdollar = workbook.add_format({'num_format': '$#,##0.00'})
+
+worksheet = writer.sheets['Detail']
+worksheet.set_column('P:S', 18, usdollar)
+
+#
+# Build a pivot table by Invoice Type
+#
+invoiceSummary = pd.pivot_table(df, index=["Type", "Category"],
+                        values=["totalOneTimeAmount", "totalRecurringCharge"],
+                        columns=["IBM_Invoice"],
+                        aggfunc={'totalOneTimeAmount': np.sum, 'totalRecurringCharge': np.sum}, fill_value=0).\
+                                rename(columns={'totalRecurringCharge': 'TotalRecurring'})
+invoiceSummary.to_excel(writer, 'InvoiceSummary')
+worksheet = writer.sheets['InvoiceSummary']
+
+#
+# Build a pivot table by Category with totalRecurringCharges
+#
 categorySummary = pd.pivot_table(df, index=["Category", "Description"],
                         values=["totalRecurringCharge"],
                         columns=["IBM_Invoice"],
                         aggfunc={'totalRecurringCharge': np.sum}, fill_value=0).\
-                                rename(columns={'totalRecurringCharge': 'Total'})
+                                rename(columns={'totalRecurringCharge': 'TotalRecurring'})
 categorySummary.to_excel(writer, 'CategorySummary')
-# Set the column width and format.
 format1 = workbook.add_format({'num_format': '$#,##0.00'})
 format2 = workbook.add_format({'align': 'left'})
 worksheet = writer.sheets['CategorySummary']
-worksheet.set_column('A:B', 30, format2)
-worksheet.set_column('C:M', 18, format1)
 
 
+#
+# Build a pivot table for Hourly VSI's with totalRecurringCharges
+#
 virtualServers = df.query('Category == ["Computing Instance"] and Hourly == [True]')
 virtualServerPivot = pd.pivot_table(virtualServers, index=["Description", "OS"],
                         values=["Hours", "totalRecurringCharge"],
                         columns=["IBM_Invoice"],
                         aggfunc={'Description': len, 'Hours': np.sum, 'totalRecurringCharge': np.sum}, fill_value=0).\
-                                rename(columns={"Description": 'qty', 'Hours': 'Total Hours', 'totalRecurringCharge': 'Total'})
-
+                                rename(columns={"Description": 'qty', 'Hours': 'Total Hours', 'totalRecurringCharge': 'TotalRecurring'})
 virtualServerPivot.to_excel(writer, 'HrlyVirtualServerPivot')
 worksheet = writer.sheets['HrlyVirtualServerPivot']
-worksheet.set_column('A:B', 30, format2)
-worksheet.set_column('Y:AI', 18, format1)
 
+
+#
+# Build a pivot table for Monthly VSI's with totalRecurringCharges
+#
 monthlyVirtualServers = df.query('Category == ["Computing Instance"] and Hourly == [False]')
 virtualServerPivot = pd.pivot_table(monthlyVirtualServers, index=["Description", "OS"],
                         values=["totalRecurringCharge"],
                         columns=["IBM_Invoice"],
                         aggfunc={'Description': len, 'totalRecurringCharge': np.sum}, fill_value=0).\
-                                rename(columns={"Description": 'qty', 'totalRecurringCharge': 'Total'})
+                                rename(columns={"Description": 'qty', 'totalRecurringCharge': 'TotalRecurring'})
 virtualServerPivot.to_excel(writer, 'MnthlyVirtualServerPivot')
 worksheet = writer.sheets['MnthlyVirtualServerPivot']
-worksheet.set_column('A:B', 30, format2)
-worksheet.set_column('N:X', 18, format1)
 
-bareMetalServers = df.query('Category == ["Server"]')
+
+#
+# Build a pivot table for Hourly Bare Metal with totalRecurringCharges
+#
+bareMetalServers = df.query('Category == ["Server"]and Hourly == [True]')
 bareMetalServerPivot = pd.pivot_table(bareMetalServers, index=["Description", "OS"],
+                        values=["Hours", "totalRecurringCharge"],
+                        columns=["IBM_Invoice"],
+                        aggfunc={'Description': len,  'totalRecurringCharge': np.sum}, fill_value=0).\
+                                rename(columns={"Description": 'qty', 'Hours': np.sum, 'totalRecurringCharge': 'TotalRecurring'})
+bareMetalServerPivot.to_excel(writer, 'HrlyBaremetalServerPivot')
+worksheet = writer.sheets['HrlyBaremetalServerPivot']
+
+#
+# Build a pivot table for Monthly Bare Metal with totalRecurringCharges
+#
+monthlyBareMetalServers = df.query('Category == ["Server"] and Hourly == [False]')
+monthlyBareMetalServerPivot = pd.pivot_table(monthlyBareMetalServers, index=["Description", "OS"],
                         values=["totalRecurringCharge"],
                         columns=["IBM_Invoice"],
                         aggfunc={'Description': len,  'totalRecurringCharge': np.sum}, fill_value=0).\
-                                rename(columns={"Description": 'qty', 'totalRecurringCharge': 'Total'})
-bareMetalServerPivot.to_excel(writer, 'BaremetalServerPivot')
-worksheet = writer.sheets['BaremetalServerPivot']
-worksheet.set_column('A:B', 30, format2)
-worksheet.set_column('N:X', 18, format1)
+                                rename(columns={"Description": 'qty', 'totalRecurringCharge': 'TotalRecurring'})
+monthlyBareMetalServerPivot.to_excel(writer, 'MthlyBaremetalServerPivot')
+worksheet = writer.sheets['MthlyBaremetalServerPivot']
+
 
 writer.save()
