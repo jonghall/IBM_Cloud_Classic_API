@@ -15,7 +15,7 @@ pytz==2019.3
 requests==2.23.0
 six==1.14.0
 SoftLayer==5.9.7
-urllib3==1.25.8
+urllib3==1.26.5
 wcwidth==0.1.9
 xlrd==1.2.0
 XlsxWriter==1.2.8
