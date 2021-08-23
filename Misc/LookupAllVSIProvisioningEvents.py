@@ -1,7 +1,6 @@
 import time,  SoftLayer, configparser, os, argparse, csv, math,logging
 from datetime import datetime, timedelta, tzinfo
 
-
 def convert_timedelta(duration):
     days, seconds = duration.days, duration.seconds
     hours = days * 24 + seconds // 3600

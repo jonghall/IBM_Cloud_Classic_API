@@ -1,4 +1,4 @@
-import sys, getopt, socket, time,  SoftLayer, json, string, configparser, os, argparse, csv
+import SoftLayer, json, configparser, os, argparse, csv
 from datetime import datetime, timedelta, tzinfo
 import pytz
 
