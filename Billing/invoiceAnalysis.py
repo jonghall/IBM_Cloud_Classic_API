@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # invoiceAnalysis.py - A script to export IBM Cloud Classic Infrastructure Invoices
 # Author: Jon Hall
-# Copyright (c) 2020
+# Copyright (c) 2021
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -106,7 +106,7 @@ def getInvoiceDetail(invoiceList):
         totalItems = invoice['invoiceTopLevelItemCount']
 
         # PRINT INVOICE SUMMARY LINE
-        logging.info('Invoice: {} Date: {} Type:{} Items: {} Amount: {.2f}'.format(invoiceID, datetime.strftime(invoiceDate, "%Y-%m-%d"),invoiceType, totalItems, invoiceTotalRecurringAmount))
+        logging.info('Invoice: {} Date: {} Type:{} Items: {} Amount: ${:,.2f}'.format(invoiceID, datetime.strftime(invoiceDate, "%Y-%m-%d"),invoiceType, totalItems, invoiceTotalRecurringAmount))
 
         limit = 250 ## set limit of record returned
         for offset in range(0, totalItems, limit):
