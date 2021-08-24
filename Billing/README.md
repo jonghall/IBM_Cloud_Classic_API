@@ -5,7 +5,6 @@ Script | Description
 invoiceAnalysis.py | Analyzes all invoices between two dates and creates excel reports.
 requirements.txt | Package requirements
 logging.json | LOGGER config used by script
-Dockerfile | Docker Build file used by code engine to build container.
 
 *invoiceAnalysis.py* analyzes IBM Cloud Classic Infrastructure invoices between two dates and consolidates billing data into an
 Excel worksheet for review.  Each tab has a breakdown based on:
