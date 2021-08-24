@@ -51,7 +51,6 @@ optional arguments:
                         Start date mm/dd/yy
   -e ENDDATE, --enddate ENDDATE
                         End date mm/dd/yyyy
-  --kyndryl             Build report pivots based on Kyndryl Invoice date cutoffs
   -o OUTPUT, --output OUTPUT
                         Filename .xlsx for output.
 
