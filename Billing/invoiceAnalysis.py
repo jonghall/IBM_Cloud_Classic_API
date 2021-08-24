@@ -47,7 +47,7 @@ def getDescription(categoryCode, detail):
                 return item['product']['description'].strip()
     return ""
 
-def getKyndrylinvoicedate(invoiceDate):
+def getSLIClinvoicedate(invoiceDate):
     # Determine GTS/Kyndryl Invoice (20th - 19th of month) from IBM invoice date cutoff
     year = invoiceDate.year
     month = invoiceDate.month
@@ -96,10 +96,7 @@ def getInvoiceDetail(invoiceList):
         invoiceDate = datetime.strptime(invoice['createDate'][:10], "%Y-%m-%d")
         invoiceTotalAmount = float(invoice['invoiceTotalAmount'])
 
-        if invoicePivot == "Kyndryl_Invoice":
-            kyndrylInvoiceDate = getKyndrylinvoicedate(invoiceDate)
-        else:
-            kyndrylInvoiceDate = ""
+        SLICInvoiceDate = getSLIClinvoicedate(invoiceDate)
 
         invoiceTotalRecurringAmount = float(invoice['invoiceTotalRecurringAmount'])
         invoiceType = invoice['typeCode']
@@ -172,6 +169,7 @@ def getInvoiceDetail(invoiceList):
 
                 # Append record to dataframe
                 row = {'IBM_Invoice': invoiceDate,
+                       'Month': SLICInvoiceDate,
                        'Invoice_Number': invoiceID,
                        'BillingItemId': billingItemId,
                        'hostName': hostName,
@@ -189,11 +187,7 @@ def getInvoiceDetail(invoiceList):
                        'InvoiceRecurring': float(invoiceTotalRecurringAmount),
                        'Type': invoiceType
                         }
-                # If Kyndryl insert column for Kyndryl Invoice Date
-                if invoicePivot == "Kyndryl_Invoice":
-                    row['Month'] = kyndrylInvoiceDate
-                else:
-                    row['Month'] = invoiceDate.strftime('%Y-%m')
+
 
                 df = df.append(row, ignore_index=True)
 
@@ -303,7 +297,6 @@ if __name__ == "__main__":
     parser.add_argument("-k", "--apikey", default=os.environ.get('SL_API_KEY', None), help="IBM Cloud Classic API Key")
     parser.add_argument("-s", "--startdate", help="Start date mm/dd/yy")
     parser.add_argument("-e", "--enddate", help="End date mm/dd/yyyy")
-    parser.add_argument("--kyndryl", action='store_true', help="Build report pivots based on Kyndryl Invoice date cutoffs")
     parser.add_argument("-o", "--output", default="invoices-detail.xlsx", help="Filename .xlsx for output.")
 
     args = parser.parse_args()
@@ -326,12 +319,6 @@ if __name__ == "__main__":
     else:
         enddate = args.enddate
 
-    if args.kyndryl:
-        invoicePivot = "Kyndryl_Invoice"
-    else:
-        invoicePivot = "IBM_Invoice"
-
-    logging.info("Setting pivots tables to invoice type = %s" % (invoicePivot))
     # Create dataframe to work with
 
     df = pd.DataFrame(columns=['IBM_Invoice',
