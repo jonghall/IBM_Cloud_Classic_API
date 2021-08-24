@@ -219,6 +219,17 @@ def createReport():
     worksheet = writer.sheets['InvoiceSummary']
 
     #
+    # Map Portal Invoices to SLIC Invoices
+    #
+
+    SLICInvoice = pd.pivot_table(df, index=["IBM_Invoice_Month", "Invoice_Number", "Portal_Invoice_Date", "Type"],
+                            values=["totalOneTimeAmount", "totalRecurringCharge"],
+                            aggfunc={'totalOneTimeAmount': np.sum, 'totalRecurringCharge': np.sum}, fill_value=0).\
+                                    rename(columns={'totalRecurringCharge': 'TotalRecurring'})
+    SLICInvoice.to_excel(writer, 'InvoiceMap')
+    worksheet = writer.sheets['InvoiceMap']
+
+    #
     # Build a pivot table by Category with totalRecurringCharges
     #
     categorySummary = pd.pivot_table(df, index=["Category", "Description"],
