@@ -48,14 +48,14 @@ def getDescription(categoryCode, detail):
     return ""
 
 def getSLIClinvoicedate(invoiceDate):
-    # Determine GTS/Kyndryl Invoice (20th - 19th of month) from IBM invoice date cutoff
+    # Determine SLIC  Invoice (20th prev month - 19th of month) from portal invoice make current month SLIC invoice.
     year = invoiceDate.year
     month = invoiceDate.month
     day = invoiceDate.day
     if day <= 19:
-        month = month + 1
+        month = month + 0
     else:
-        month = month + 2
+        month = month + 1
 
     if month > 12:
         month = month - 12
@@ -168,8 +168,8 @@ def getInvoiceDetail(invoiceList):
                     description = description.replace('\n', " ")
 
                 # Append record to dataframe
-                row = {'IBM_Invoice': invoiceDate,
-                       'Month': SLICInvoiceDate,
+                row = {'Portal_Invoice_Date': invoiceDate.strftime("%Y-%m-%d"),
+                       'IBM_Invoice_Month': SLICInvoiceDate,
                        'Invoice_Number': invoiceID,
                        'BillingItemId': billingItemId,
                        'hostName': hostName,
@@ -212,7 +212,7 @@ def createReport():
     #
     invoiceSummary = pd.pivot_table(df, index=["Type", "Category"],
                             values=["totalOneTimeAmount", "totalRecurringCharge"],
-                            columns=['Month'],
+                            columns=['IBM_Invoice_Month'],
                             aggfunc={'totalOneTimeAmount': np.sum, 'totalRecurringCharge': np.sum}, fill_value=0).\
                                     rename(columns={'totalRecurringCharge': 'TotalRecurring'})
     invoiceSummary.to_excel(writer, 'InvoiceSummary')
@@ -223,7 +223,7 @@ def createReport():
     #
     categorySummary = pd.pivot_table(df, index=["Category", "Description"],
                             values=["totalRecurringCharge"],
-                            columns=['Month'],
+                            columns=['IBM_Invoice_Month'],
                             aggfunc={'totalRecurringCharge': np.sum}, fill_value=0).\
                                     rename(columns={'totalRecurringCharge': 'TotalRecurring'})
     categorySummary.to_excel(writer, 'CategorySummary')
@@ -239,7 +239,7 @@ def createReport():
     if len(virtualServers) > 0:
         virtualServerPivot = pd.pivot_table(virtualServers, index=["Description", "OS"],
                                 values=["Hours", "totalRecurringCharge"],
-                                columns=['Month'],
+                                columns=['IBM_Invoice_Month'],
                                 aggfunc={'Description': len, 'Hours': np.sum, 'totalRecurringCharge': np.sum}, fill_value=0).\
                                         rename(columns={"Description": 'qty', 'Hours': 'Total Hours', 'totalRecurringCharge': 'TotalRecurring'})
         virtualServerPivot.to_excel(writer, 'HrlyVirtualServerPivot')
@@ -252,7 +252,7 @@ def createReport():
     if len(monthlyVirtualServers) > 0:
         virtualServerPivot = pd.pivot_table(monthlyVirtualServers, index=["Description", "OS"],
                                 values=["totalRecurringCharge"],
-                                columns=['Month'],
+                                columns=['IBM_Invoice_Month'],
                                 aggfunc={'Description': len, 'totalRecurringCharge': np.sum}, fill_value=0).\
                                         rename(columns={"Description": 'qty', 'totalRecurringCharge': 'TotalRecurring'})
         virtualServerPivot.to_excel(writer, 'MnthlyVirtualServerPivot')
@@ -266,7 +266,7 @@ def createReport():
     if len(bareMetalServers) > 0:
         bareMetalServerPivot = pd.pivot_table(bareMetalServers, index=["Description", "OS"],
                                 values=["Hours", "totalRecurringCharge"],
-                                columns=['Month'],
+                                columns=['IBM_Invoice_Month'],
                                 aggfunc={'Description': len,  'totalRecurringCharge': np.sum}, fill_value=0).\
                                         rename(columns={"Description": 'qty', 'Hours': np.sum, 'totalRecurringCharge': 'TotalRecurring'})
         bareMetalServerPivot.to_excel(writer, 'HrlyBaremetalServerPivot')
@@ -279,7 +279,7 @@ def createReport():
     if len(monthlyBareMetalServers) > 0:
         monthlyBareMetalServerPivot = pd.pivot_table(monthlyBareMetalServers, index=["Description", "OS"],
                                 values=["totalRecurringCharge"],
-                                columns=['Month'],
+                                columns=['IBM_Invoice_Month'],
                                 aggfunc={'Description': len,  'totalRecurringCharge': np.sum}, fill_value=0).\
                                         rename(columns={"Description": 'qty', 'totalRecurringCharge': 'TotalRecurring'})
         monthlyBareMetalServerPivot.to_excel(writer, 'MthlyBaremetalServerPivot')
@@ -321,8 +321,8 @@ if __name__ == "__main__":
 
     # Create dataframe to work with
 
-    df = pd.DataFrame(columns=['IBM_Invoice',
-                               'Month',
+    df = pd.DataFrame(columns=['Portal_Invoice_Date',
+                               'IBM_Invoice_Month',
                                'Invoice_Number',
                                'Type',
                                'BillingItemId',
