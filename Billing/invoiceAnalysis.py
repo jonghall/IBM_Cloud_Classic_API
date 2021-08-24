@@ -170,7 +170,7 @@ def getInvoiceDetail(invoiceList):
                 # Append record to dataframe
                 row = {'Portal_Invoice_Date': invoiceDate.strftime("%Y-%m-%d"),
                        'IBM_Invoice_Month': SLICInvoiceDate,
-                       'Invoice_Number': invoiceID,
+                       'Portal_Invoice_Number': invoiceID,
                        'BillingItemId': billingItemId,
                        'hostName': hostName,
                        'Category': categoryName,
@@ -222,7 +222,7 @@ def createReport():
     # Map Portal Invoices to SLIC Invoices
     #
 
-    SLICInvoice = pd.pivot_table(df, index=["IBM_Invoice_Month", "Invoice_Number", "Portal_Invoice_Date", "Type"],
+    SLICInvoice = pd.pivot_table(df, index=["IBM_Invoice_Month", "Portal_Invoice_Number", "Portal_Invoice_Date", "Type"],
                             values=["totalOneTimeAmount", "totalRecurringCharge"],
                             aggfunc={'totalOneTimeAmount': np.sum, 'totalRecurringCharge': np.sum}, fill_value=0).\
                                     rename(columns={'totalRecurringCharge': 'TotalRecurring'})
@@ -334,7 +334,7 @@ if __name__ == "__main__":
 
     df = pd.DataFrame(columns=['Portal_Invoice_Date',
                                'IBM_Invoice_Month',
-                               'Invoice_Number',
+                               'Portal_Invoice_Number',
                                'Type',
                                'BillingItemId',
                                'hostName',
