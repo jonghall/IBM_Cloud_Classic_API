@@ -10,6 +10,7 @@ logging.json | LOGGER config used by script
 Excel worksheet for review.  Each tab has a breakdown based on:
 
    - ***Detail*** tab has every invoice item for analyzed invoices represented as one row each.  All invoice types are included, including CREDIT invoices.  This data is summarized on the following tabs.
+   - ***InvoiceMap*** tab has a mapping of each portal invoice, portal invoice date, invoice type grouped by the IBM monthly invoice they are billed on.
    - ***InvoiceSummary*** tab is a pivot table of all the charges by product category & month for analyzed invoices. It also breaks out oneTime amounts vs Recurring invoices.
    - ***CategorySummary*** tab is another pivot of all recurring charges broken down by Category, sub category (for example specific VSI sizes)
    - The following excel tabs will only exist if there are servers of these types on the analyzed invoices
