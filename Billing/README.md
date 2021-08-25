@@ -33,11 +33,11 @@ export SL_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 3.  Run Python script.
 ```bazaar
-python invoiceAnalysis.py -s 01/01/2021 -e 05/31/2021 --output analysis_JanToMay.XLSX
+python invoiceAnalysis.py -s 2021/01 -e 2021/06 --output analysis_JanToMay.XLSX
 ```
 
 ```bazaar
-usage: invoiceAnalysis.py [-h] [-u USERNAME] [-k APIKEY] [-s STARTDATE] [-e ENDDATE] [--kyndryl] [-o OUTPUT]
+usage: invoiceAnalysis.py [-h] [-u USERNAME] [-k APIKEY] [-s STARTDATE] [-e ENDDATE] [-o OUTPUT]
 
 Export detail from invoices between dates sorted by Hourly vs Monthly between Start and End date.
 
@@ -48,10 +48,11 @@ optional arguments:
   -k APIKEY, --apikey APIKEY
                         IBM Cloud Classic API Key
   -s STARTDATE, --startdate STARTDATE
-                        Start date mm/dd/yy
+                        Start Year & Month in format YYYY/MM
   -e ENDDATE, --enddate ENDDATE
-                        End date mm/dd/yyyy
+                        End Year & Month in format YYYY/MM
   -o OUTPUT, --output OUTPUT
                         Filename .xlsx for output.
+
 
 ```
