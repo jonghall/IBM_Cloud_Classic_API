@@ -232,7 +232,9 @@ def createReport():
                                  index=["IBM_Invoice_Month", "Portal_Invoice_Date", "Portal_Invoice_Number", "Type"],
                                  values=["Invoice_Amount"],
                                  aggfunc={'Invoice_Amount': np.sum}, fill_value=0)
-    SLICInvoice.to_excel(writer, 'InvoiceMap')
+    out = pd.concat([d.append(d.sum().rename((k, '-', '-', 'Total'))) for k, d in SLICInvoice.groupby('IBM_Invoice_Month')])
+
+    out.to_excel(writer, 'InvoiceMap')
     worksheet = writer.sheets['InvoiceMap']
     format1 = workbook.add_format({'num_format': '$#,##0.00'})
     format2 = workbook.add_format({'align': 'left'})
