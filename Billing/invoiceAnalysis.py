@@ -217,17 +217,28 @@ def createReport():
                                     rename(columns={'totalRecurringCharge': 'TotalRecurring'})
     invoiceSummary.to_excel(writer, 'InvoiceSummary')
     worksheet = writer.sheets['InvoiceSummary']
-
+    format1 = workbook.add_format({'num_format': '$#,##0.00'})
+    format2 = workbook.add_format({'align': 'left'})
+    worksheet.set_column("A:A", 20, format2)
+    worksheet.set_column("B:B", 40, format2)
+    worksheet.set_column("C:ZZ", 18, format1)
     #
     # Map Portal Invoices to SLIC Invoices
     #
 
-    SLICInvoice = pd.pivot_table(df, index=["IBM_Invoice_Month", "Portal_Invoice_Number", "Portal_Invoice_Date", "Type"],
-                            values=["totalOneTimeAmount", "totalRecurringCharge"],
-                            aggfunc={'totalOneTimeAmount': np.sum, 'totalRecurringCharge': np.sum}, fill_value=0).\
-                                    rename(columns={'totalRecurringCharge': 'TotalRecurring'})
+    invoicedf = df
+    invoicedf['Invoice_Amount'] = invoicedf['totalOneTimeAmount'] + invoicedf['totalRecurringCharge']
+    SLICInvoice = pd.pivot_table(invoicedf,
+                                 index=["IBM_Invoice_Month", "Portal_Invoice_Date", "Portal_Invoice_Number", "Type"],
+                                 values=["Invoice_Amount"],
+                                 aggfunc={'Invoice_Amount': np.sum}, fill_value=0)
     SLICInvoice.to_excel(writer, 'InvoiceMap')
     worksheet = writer.sheets['InvoiceMap']
+    format1 = workbook.add_format({'num_format': '$#,##0.00'})
+    format2 = workbook.add_format({'align': 'left'})
+    worksheet.set_column("A:D", 20, format2)
+    worksheet.set_column("E:ZZ", 18, format1)
+
 
     #
     # Build a pivot table by Category with totalRecurringCharges
@@ -238,10 +249,12 @@ def createReport():
                             aggfunc={'totalRecurringCharge': np.sum}, fill_value=0).\
                                     rename(columns={'totalRecurringCharge': 'TotalRecurring'})
     categorySummary.to_excel(writer, 'CategorySummary')
+    worksheet = writer.sheets['CategorySummary']
     format1 = workbook.add_format({'num_format': '$#,##0.00'})
     format2 = workbook.add_format({'align': 'left'})
-    worksheet = writer.sheets['CategorySummary']
-
+    worksheet.set_column("A:A", 40, format2)
+    worksheet.set_column("B:B", 40, format2)
+    worksheet.set_column("C:ZZ", 18, format1)
 
     #
     # Build a pivot table for Hourly VSI's with totalRecurringCharges
