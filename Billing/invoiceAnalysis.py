@@ -245,12 +245,12 @@ def createReport():
 
     #
     # Build a pivot table by Category with totalRecurringCharges
-    #
+    df["totalAmount"] = df["totalOneTimeAmount"] + df["totalRecurringCharge"]
+
     categorySummary = pd.pivot_table(df, index=["Category", "Description"],
-                            values=["totalOneTimeAmount", "totalRecurringCharge"],
+                            values=["totalAmount"],
                             columns=['IBM_Invoice_Month'],
-                            aggfunc={'totalOneTimeAmount': np.sum, 'totalRecurringCharge': np.sum}, fill_value=0).\
-                                    rename(columns={'totalRecurringCharge': 'TotalRecurring'})
+                            aggfunc={'totalAmount': np.sum}, margins=True, margins_name="Total", fill_value=0)
     categorySummary.to_excel(writer, 'CategorySummary')
     worksheet = writer.sheets['CategorySummary']
     format1 = workbook.add_format({'num_format': '$#,##0.00'})
