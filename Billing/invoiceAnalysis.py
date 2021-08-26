@@ -208,21 +208,6 @@ def createReport():
     worksheet.set_column('P:S', 18, usdollar)
 
     #
-    # Build a pivot table by Invoice Type
-    #
-    invoiceSummary = pd.pivot_table(df, index=["Type", "Category"],
-                            values=["totalOneTimeAmount", "totalRecurringCharge"],
-                            columns=['IBM_Invoice_Month'],
-                            aggfunc={'totalOneTimeAmount': np.sum, 'totalRecurringCharge': np.sum}, fill_value=0).\
-                                    rename(columns={'totalRecurringCharge': 'TotalRecurring'})
-    invoiceSummary.to_excel(writer, 'InvoiceSummary')
-    worksheet = writer.sheets['InvoiceSummary']
-    format1 = workbook.add_format({'num_format': '$#,##0.00'})
-    format2 = workbook.add_format({'align': 'left'})
-    worksheet.set_column("A:A", 20, format2)
-    worksheet.set_column("B:B", 40, format2)
-    worksheet.set_column("C:ZZ", 18, format1)
-    #
     # Map Portal Invoices to SLIC Invoices
     #
 
@@ -241,14 +226,30 @@ def createReport():
     worksheet.set_column("A:D", 20, format2)
     worksheet.set_column("E:ZZ", 18, format1)
 
+    #
+    # Build a pivot table by Invoice Type
+    #
+    invoiceSummary = pd.pivot_table(df, index=["Type", "Category"],
+                            values=["totalOneTimeAmount", "totalRecurringCharge"],
+                            columns=['IBM_Invoice_Month'],
+                            aggfunc={'totalOneTimeAmount': np.sum, 'totalRecurringCharge': np.sum}, fill_value=0).\
+                                    rename(columns={'totalRecurringCharge': 'TotalRecurring'})
+    invoiceSummary.to_excel(writer, 'InvoiceSummary')
+    worksheet = writer.sheets['InvoiceSummary']
+    format1 = workbook.add_format({'num_format': '$#,##0.00'})
+    format2 = workbook.add_format({'align': 'left'})
+    worksheet.set_column("A:A", 20, format2)
+    worksheet.set_column("B:B", 40, format2)
+    worksheet.set_column("C:ZZ", 18, format1)
+
 
     #
     # Build a pivot table by Category with totalRecurringCharges
     #
     categorySummary = pd.pivot_table(df, index=["Category", "Description"],
-                            values=["totalRecurringCharge"],
+                            values=["totalOneTimeAmount", "totalRecurringCharge"],
                             columns=['IBM_Invoice_Month'],
-                            aggfunc={'totalRecurringCharge': np.sum}, fill_value=0).\
+                            aggfunc={'totalOneTimeAmount': np.sum, 'totalRecurringCharge': np.sum}, fill_value=0).\
                                     rename(columns={'totalRecurringCharge': 'TotalRecurring'})
     categorySummary.to_excel(writer, 'CategorySummary')
     worksheet = writer.sheets['CategorySummary']
@@ -310,6 +311,10 @@ def createReport():
                                         rename(columns={"Description": 'qty', 'totalRecurringCharge': 'TotalRecurring'})
         monthlyBareMetalServerPivot.to_excel(writer, 'MthlyBaremetalServerPivot')
         worksheet = writer.sheets['MthlyBaremetalServerPivot']
+        format1 = workbook.add_format({'num_format': '$#,##0.00'})
+        format2 = workbook.add_format({'align': 'left'})
+        worksheet.set_column("A:A", 40, format2)
+        worksheet.set_column("B:B", 40, format2)
 
     writer.save()
 
